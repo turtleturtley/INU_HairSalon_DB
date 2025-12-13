@@ -98,38 +98,47 @@ def index():
     <head>
         <title>인천대 미용실 찾기</title>
         <style>
-            body { font-family: 'Apple SD Gothic Neo', sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
-            h1 { text-align: center; color: #2c3e50; }
+            * { box-sizing: border-box; }
+            body { font-family: 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; }
+            h1 { text-align: center; color: #FF6B9D; font-size: 1.8em; margin-bottom: 30px; font-weight: 600; }
             .search-box { text-align: center; margin-bottom: 30px; }
-            input[type="text"] { padding: 10px; width: 70%; border: 1px solid #ddd; border-radius: 5px; }
-            button { padding: 10px 20px; background-color: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; }
-            .sort-options { margin-top: 15px; display: flex; justify-content: center; gap: 10px; }
-            .sort-options a { padding: 8px 15px; text-decoration: none; border-radius: 5px; font-size: 0.9em; }
-            .sort-options a.active { background-color: #3498db; color: white; }
-            .sort-options a:not(.active) { background-color: #ecf0f1; color: #34495e; }
-            .sort-options a:not(.active):hover { background-color: #bdc3c7; }
+            .search-wrapper { position: relative; display: inline-block; width: 70%; max-width: 600px; }
+            .search-wrapper::before { content: '🔍'; position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-size: 1.2em; z-index: 1; }
+            input[type="text"] { padding: 12px 15px 12px 45px; width: 100%; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 1em; }
+            input[type="text"]:focus { outline: none; border-color: #FF6B9D; box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1); }
+            button[type="submit"] { padding: 12px 30px; background-color: #FF6B9D; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 1em; font-weight: 600; margin-top: 15px; box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3); }
+            .sort-options { margin-top: 20px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+            .sort-options a { padding: 10px 20px; text-decoration: none; border-radius: 20px; font-size: 0.9em; font-weight: 500; }
+            .sort-options a.active { background-color: #FF6B9D; color: white; box-shadow: 0 2px 10px rgba(255, 107, 157, 0.3); }
+            .sort-options a:not(.active) { background-color: white; color: #666; border: 2px solid #e0e0e0; }
             .salons-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
-            .card { border: 1px solid #eee; border-radius: 10px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative; }
-            .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
-            .salon-name { font-size: 1.3em; font-weight: bold; color: #333; flex: 1; }
-            .reservation-btn { padding: 8px 15px; background-color: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9em; }
-            .reservation-btn:hover { background-color: #229954; }
-            .location { color: #7f8c8d; font-size: 0.9em; margin-bottom: 15px; }
+            .card { background: white; border: none; border-radius: 15px; padding: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); position: relative; }
+            .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; position: relative; }
+            .salon-name { font-size: 1.3em; font-weight: 600; color: #333; flex: 1; line-height: 1.4; }
+            .reservation-btn { padding: 8px 12px; background-color: #FF6B9D; color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 1.2em; box-shadow: 0 2px 8px rgba(255, 107, 157, 0.3); position: relative; }
+            .location { color: #888; font-size: 0.9em; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; }
+            .location::before { content: '📍'; font-size: 1.1em; }
             .menu-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-            .menu-table td { border-bottom: 1px solid #f0f0f0; padding: 8px 0; }
-            .price { text-align: right; font-weight: bold; color: #e74c3c; }
-            .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-            .modal.show { display: flex; justify-content: center; align-items: center; }
-            .modal-content { background-color: white; padding: 30px; border-radius: 10px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
-            .modal-content h2 { margin-top: 0; color: #2c3e50; }
-            .modal-content .phone-number { font-size: 1.5em; font-weight: bold; color: #3498db; margin: 20px 0; }
-            .modal-content .phone-link { display: inline-block; padding: 10px 20px; background-color: #3498db; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px; }
-            .modal-content .phone-link:hover { background-color: #2980b9; }
-            .close-btn { float: right; font-size: 28px; font-weight: bold; color: #aaa; cursor: pointer; }
-            .close-btn:hover { color: #000; }
-            .service-options { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
-            .service-btn { padding: 12px 20px; background-color: #ecf0f1; color: #34495e; border: 2px solid #bdc3c7; border-radius: 5px; cursor: pointer; font-size: 1em; }
-            .service-btn:hover { background-color: #3498db; color: white; border-color: #3498db; }
+            .menu-table td { border-bottom: 1px solid #f0f0f0; padding: 10px 0; }
+            .menu-table tr:last-child td { border-bottom: none; }
+            .price { text-align: right; font-weight: 600; color: #FF6B9D; font-size: 1.05em; }
+            .modal { display: none; position: absolute; z-index: 1000; }
+            .modal.show { display: block; }
+            .modal-content { background-color: white; padding: 10px; border-radius: 10px; text-align: center; min-width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative; top: 5px; right: 0; }
+            .modal-content .phone-number { font-size: 0.9em; font-weight: bold; color: #444; margin: 8px 0; }
+            .modal-content .phone-link { display: inline-block; padding: 6px 12px; background-color: #FF6B9D; color: white; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 0.85em; box-shadow: 0 2px 8px rgba(255, 107, 157, 0.3); }
+            .reservation-btn { position: relative; }
+            .reservation-btn .modal { left: auto; right: 0; top: 100%; margin-top: 5px; }
+            .service-options { display: flex; flex-direction: row; gap: 8px; }
+            .service-btn { padding: 8px 12px; background-color: white; color: #666; border: 2px solid #e0e0e0; border-radius: 8px; cursor: pointer; font-size: 0.85em; font-weight: 500; }
+            .sort-options { position: relative; }
+            .sort-options a { position: relative; display: inline-block; }
+            .sort-options .modal { left: 0; top: 100%; margin-top: 5px; white-space: nowrap; }
+            .modal-content { padding: 10px; }
+            @media (max-width: 768px) {
+                .salons-grid { grid-template-columns: 1fr; }
+                .search-wrapper { width: 100%; }
+            }
         </style>
     </head>
     <body>
@@ -137,17 +146,41 @@ def index():
         
         <div class="search-box">
             <form action="">
-                <input type="text" name="q" placeholder="미용실 이름, 위치, 메뉴 검색 (예: 남성커트, 여성커트)..." value="{{ request.args.get('q', '') }}">
+                <div class="search-wrapper">
+                    <input type="text" name="q" placeholder="미용실 이름, 위치, 메뉴 검색 (예: 남성커트, 여성커트)..." value="{{ request.args.get('q', '') }}">
+                </div>
                 <input type="hidden" name="sort" value="{{ request.args.get('sort', 'name') }}">
                 <button type="submit">검색</button>
             </form>
-            <div class="sort-options">
+            <div class="sort-options" style="position: relative;">
                 {% set current_sort = request.args.get('sort', 'name') %}
                 {% set is_price_low = 'price_low' in current_sort %}
                 {% set is_price_high = 'price_high' in current_sort %}
                 <a href="?q={{ request.args.get('q', '') }}&sort=name" class="{{ 'active' if current_sort == 'name' else '' }}">이름순</a>
-                <a href="#" onclick="showServiceModal('price_low'); return false;" class="{{ 'active' if is_price_low else '' }}">가격 낮은순</a>
-                <a href="#" onclick="showServiceModal('price_high'); return false;" class="{{ 'active' if is_price_high else '' }}">가격 높은순</a>
+                <a href="#" onclick="showServiceModal(event, 'price_low'); return false;" class="{{ 'active' if is_price_low else '' }}">가격 낮은순
+                    <div id="serviceModal-price_low" class="modal">
+                        <div class="modal-content">
+                            <div class="service-options">
+                                <button class="service-btn" onclick="selectService('남성 커트')">남성 커트</button>
+                                <button class="service-btn" onclick="selectService('여성 커트')">여성 커트</button>
+                                <button class="service-btn" onclick="selectService('펌')">펌</button>
+                                <button class="service-btn" onclick="selectService('염색')">염색</button>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+                <a href="#" onclick="showServiceModal(event, 'price_high'); return false;" class="{{ 'active' if is_price_high else '' }}">가격 높은순
+                    <div id="serviceModal-price_high" class="modal">
+                        <div class="modal-content">
+                            <div class="service-options">
+                                <button class="service-btn" onclick="selectService('남성 커트')">남성 커트</button>
+                                <button class="service-btn" onclick="selectService('여성 커트')">여성 커트</button>
+                                <button class="service-btn" onclick="selectService('펌')">펌</button>
+                                <button class="service-btn" onclick="selectService('염색')">염색</button>
+                            </div>
+                        </div>
+                    </div>
+                </a>
             </div>
         </div>
 
@@ -160,7 +193,14 @@ def index():
                 <div class="card-header">
                     <div class="salon-name">{{ salon['name'] }}</div>
                     {% if salon['phone'] %}
-                    <button class="reservation-btn" onclick="showPhoneModal('{{ salon['name'] }}', '{{ salon['phone'] }}')">📞 예약하기</button>
+                    <button class="reservation-btn" onclick="showPhoneModal(event, '{{ salon['phone'] }}', {{ salon['id'] }})">📞
+                        <div id="phoneModal-{{ salon['id'] }}" class="modal">
+                            <div class="modal-content">
+                                <div class="phone-number" id="modalPhoneNumber-{{ salon['id'] }}"></div>
+                                <a href="#" id="modalPhoneLink-{{ salon['id'] }}" class="phone-link">전화 걸기</a>
+                            </div>
+                        </div>
+                    </button>
                     {% endif %}
                 </div>
                 <div class="location">📍 {{ salon['location'] }}</div>
@@ -182,57 +222,34 @@ def index():
         </div>
         {% endif %}
         
-        <!-- 전화번호 모달 -->
-        <div id="phoneModal" class="modal">
-            <div class="modal-content">
-                <span class="close-btn" onclick="closePhoneModal()">&times;</span>
-                <h2>예약하기</h2>
-                <p id="modalSalonName" style="font-size: 1.2em; color: #2c3e50; margin-bottom: 20px;"></p>
-                <div class="phone-number" id="modalPhoneNumber"></div>
-                <a href="#" id="modalPhoneLink" class="phone-link">전화 걸기</a>
-            </div>
-        </div>
-        
-        <!-- 서비스 선택 모달 -->
-        <div id="serviceModal" class="modal">
-            <div class="modal-content">
-                <span class="close-btn" onclick="closeServiceModal()">&times;</span>
-                <h2>서비스 선택</h2>
-                <p style="margin-bottom: 20px;">정렬할 서비스를 선택해주세요</p>
-                <div class="service-options">
-                    <button class="service-btn" onclick="selectService('남성 커트')">남성 커트</button>
-                    <button class="service-btn" onclick="selectService('여성 커트')">여성 커트</button>
-                    <button class="service-btn" onclick="selectService('펌')">펌</button>
-                    <button class="service-btn" onclick="selectService('염색')">염색</button>
-                </div>
-            </div>
-        </div>
-        
         <script>
             let currentSortType = '';
             
-            function showPhoneModal(salonName, phoneNumber) {
-                const modal = document.getElementById('phoneModal');
-                document.getElementById('modalSalonName').textContent = salonName;
-                document.getElementById('modalPhoneNumber').textContent = phoneNumber;
-                document.getElementById('modalPhoneLink').href = 'tel:' + phoneNumber;
+            function showPhoneModal(event, phoneNumber, salonId) {
+                event.stopPropagation();
+                // 다른 모달 닫기
+                document.querySelectorAll('.modal').forEach(m => {
+                    if (m.id !== 'phoneModal-' + salonId && !m.id.startsWith('serviceModal-')) {
+                        m.classList.remove('show');
+                    }
+                });
+                const modal = document.getElementById('phoneModal-' + salonId);
+                document.getElementById('modalPhoneNumber-' + salonId).textContent = phoneNumber;
+                document.getElementById('modalPhoneLink-' + salonId).href = 'tel:' + phoneNumber;
                 modal.classList.add('show');
             }
             
-            function closePhoneModal() {
-                const modal = document.getElementById('phoneModal');
-                modal.classList.remove('show');
-            }
-            
-            function showServiceModal(sortType) {
+            function showServiceModal(event, sortType) {
+                event.stopPropagation();
                 currentSortType = sortType;
-                const modal = document.getElementById('serviceModal');
+                // 다른 모달 닫기
+                document.querySelectorAll('.modal').forEach(m => {
+                    if (m.id !== 'serviceModal-' + sortType) {
+                        m.classList.remove('show');
+                    }
+                });
+                const modal = document.getElementById('serviceModal-' + sortType);
                 modal.classList.add('show');
-            }
-            
-            function closeServiceModal() {
-                const modal = document.getElementById('serviceModal');
-                modal.classList.remove('show');
             }
             
             function selectService(serviceName) {
@@ -242,16 +259,11 @@ def index():
             }
             
             // 모달 외부 클릭 시 닫기
-            window.onclick = function(event) {
-                const phoneModal = document.getElementById('phoneModal');
-                const serviceModal = document.getElementById('serviceModal');
-                if (event.target == phoneModal) {
-                    closePhoneModal();
+            document.addEventListener('click', function(event) {
+                if (!event.target.closest('.modal') && !event.target.closest('.reservation-btn') && !event.target.closest('.sort-options a') && !event.target.closest('.service-btn')) {
+                    document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
                 }
-                if (event.target == serviceModal) {
-                    closeServiceModal();
-                }
-            }
+            });
         </script>
     </body>
     </html>
