@@ -19,7 +19,8 @@ def get_db_connection():
 @app.route('/')
 def index():
     query = request.args.get('q', '') 
-    sort_by = request.args.get('sort', 'name')  # name, price_low, price_high
+    sort_by = request.args.get('sort', 'name')  # name, price_low_서비스명, price_high_서비스명
+    service_type = request.args.get('service', '')  # 남성커트, 여성커트, 펌, 염색
     conn = get_db_connection()
     
     if query:
@@ -27,34 +28,34 @@ def index():
         # 띄어쓰기 제거한 검색어도 준비
         search_term_no_space = f'%{query.replace(" ", "")}%'
         # 미용실 이름, 위치, 그리고 메뉴 이름으로 검색 (띄어쓰기 무시)
-        if sort_by == 'price_low':
-            # 최저가 기준 오름차순
+        if sort_by.startswith('price_low') and service_type:
+            # 특정 서비스 가격 낮은순
             salons = conn.execute('''
-                SELECT DISTINCT s.*, MIN(m.price) as min_price FROM salons s
+                SELECT DISTINCT s.*, m.price as service_price FROM salons s
                 LEFT JOIN menus m ON s.id = m.salon_id
-                WHERE s.name LIKE ? 
+                WHERE (s.name LIKE ? 
                    OR s.location LIKE ? 
                    OR m.service_name LIKE ?
                    OR REPLACE(s.name, ' ', '') LIKE ?
                    OR REPLACE(s.location, ' ', '') LIKE ?
-                   OR REPLACE(m.service_name, ' ', '') LIKE ?
-                GROUP BY s.id
-                ORDER BY min_price ASC, s.name
-            ''', (search_term, search_term, search_term, search_term_no_space, search_term_no_space, search_term_no_space)).fetchall()
-        elif sort_by == 'price_high':
-            # 최고가 기준 내림차순
+                   OR REPLACE(m.service_name, ' ', '') LIKE ?)
+                   AND (m.service_name = ? OR REPLACE(m.service_name, ' ', '') = ?)
+                ORDER BY m.price ASC, s.name
+            ''', (search_term, search_term, search_term, search_term_no_space, search_term_no_space, search_term_no_space, service_type, service_type.replace(' ', ''))).fetchall()
+        elif sort_by.startswith('price_high') and service_type:
+            # 특정 서비스 가격 높은순
             salons = conn.execute('''
-                SELECT DISTINCT s.*, MAX(m.price) as max_price FROM salons s
+                SELECT DISTINCT s.*, m.price as service_price FROM salons s
                 LEFT JOIN menus m ON s.id = m.salon_id
-                WHERE s.name LIKE ? 
+                WHERE (s.name LIKE ? 
                    OR s.location LIKE ? 
                    OR m.service_name LIKE ?
                    OR REPLACE(s.name, ' ', '') LIKE ?
                    OR REPLACE(s.location, ' ', '') LIKE ?
-                   OR REPLACE(m.service_name, ' ', '') LIKE ?
-                GROUP BY s.id
-                ORDER BY max_price DESC, s.name
-            ''', (search_term, search_term, search_term, search_term_no_space, search_term_no_space, search_term_no_space)).fetchall()
+                   OR REPLACE(m.service_name, ' ', '') LIKE ?)
+                   AND (m.service_name = ? OR REPLACE(m.service_name, ' ', '') = ?)
+                ORDER BY m.price DESC, s.name
+            ''', (search_term, search_term, search_term, search_term_no_space, search_term_no_space, search_term_no_space, service_type, service_type.replace(' ', ''))).fetchall()
         else:
             # 이름순
             salons = conn.execute('''
@@ -69,22 +70,22 @@ def index():
                 ORDER BY s.name
             ''', (search_term, search_term, search_term, search_term_no_space, search_term_no_space, search_term_no_space)).fetchall()
     else:
-        if sort_by == 'price_low':
-            # 최저가 기준 오름차순
+        if sort_by.startswith('price_low') and service_type:
+            # 특정 서비스 가격 낮은순
             salons = conn.execute('''
-                SELECT s.*, MIN(m.price) as min_price FROM salons s
+                SELECT s.*, m.price as service_price FROM salons s
                 LEFT JOIN menus m ON s.id = m.salon_id
-                GROUP BY s.id
-                ORDER BY min_price ASC, s.name
-            ''').fetchall()
-        elif sort_by == 'price_high':
-            # 최고가 기준 내림차순
+                WHERE m.service_name = ? OR REPLACE(m.service_name, ' ', '') = ?
+                ORDER BY m.price ASC, s.name
+            ''', (service_type, service_type.replace(' ', ''))).fetchall()
+        elif sort_by.startswith('price_high') and service_type:
+            # 특정 서비스 가격 높은순
             salons = conn.execute('''
-                SELECT s.*, MAX(m.price) as max_price FROM salons s
+                SELECT s.*, m.price as service_price FROM salons s
                 LEFT JOIN menus m ON s.id = m.salon_id
-                GROUP BY s.id
-                ORDER BY max_price DESC, s.name
-            ''').fetchall()
+                WHERE m.service_name = ? OR REPLACE(m.service_name, ' ', '') = ?
+                ORDER BY m.price DESC, s.name
+            ''', (service_type, service_type.replace(' ', ''))).fetchall()
         else:
             # 이름순
             salons = conn.execute('SELECT * FROM salons ORDER BY name').fetchall()
@@ -126,6 +127,9 @@ def index():
             .modal-content .phone-link:hover { background-color: #2980b9; }
             .close-btn { float: right; font-size: 28px; font-weight: bold; color: #aaa; cursor: pointer; }
             .close-btn:hover { color: #000; }
+            .service-options { display: flex; flex-direction: column; gap: 10px; margin-top: 20px; }
+            .service-btn { padding: 12px 20px; background-color: #ecf0f1; color: #34495e; border: 2px solid #bdc3c7; border-radius: 5px; cursor: pointer; font-size: 1em; }
+            .service-btn:hover { background-color: #3498db; color: white; border-color: #3498db; }
         </style>
     </head>
     <body>
@@ -139,13 +143,12 @@ def index():
             </form>
             <div class="sort-options">
                 {% set current_sort = request.args.get('sort', 'name') %}
+                {% set is_price_low = 'price_low' in current_sort %}
+                {% set is_price_high = 'price_high' in current_sort %}
                 <a href="?q={{ request.args.get('q', '') }}&sort=name" class="{{ 'active' if current_sort == 'name' else '' }}">이름순</a>
-                <a href="?q={{ request.args.get('q', '') }}&sort=price_low" class="{{ 'active' if current_sort == 'price_low' else '' }}">가격 낮은순</a>
-                <a href="?q={{ request.args.get('q', '') }}&sort=price_high" class="{{ 'active' if current_sort == 'price_high' else '' }}">가격 높은순</a>
+                <a href="#" onclick="showServiceModal('price_low'); return false;" class="{{ 'active' if is_price_low else '' }}">가격 낮은순</a>
+                <a href="#" onclick="showServiceModal('price_high'); return false;" class="{{ 'active' if is_price_high else '' }}">가격 높은순</a>
             </div>
-            {% if request.args.get('q') %}
-            <div style="margin-top:10px;"><a href="/">전체 목록 보기</a></div>
-            {% endif %}
         </div>
 
         {% if not salons %}
@@ -179,7 +182,7 @@ def index():
         </div>
         {% endif %}
         
-        <!-- 모달 -->
+        <!-- 전화번호 모달 -->
         <div id="phoneModal" class="modal">
             <div class="modal-content">
                 <span class="close-btn" onclick="closePhoneModal()">&times;</span>
@@ -190,7 +193,24 @@ def index():
             </div>
         </div>
         
+        <!-- 서비스 선택 모달 -->
+        <div id="serviceModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn" onclick="closeServiceModal()">&times;</span>
+                <h2>서비스 선택</h2>
+                <p style="margin-bottom: 20px;">정렬할 서비스를 선택해주세요</p>
+                <div class="service-options">
+                    <button class="service-btn" onclick="selectService('남성 커트')">남성 커트</button>
+                    <button class="service-btn" onclick="selectService('여성 커트')">여성 커트</button>
+                    <button class="service-btn" onclick="selectService('펌')">펌</button>
+                    <button class="service-btn" onclick="selectService('염색')">염색</button>
+                </div>
+            </div>
+        </div>
+        
         <script>
+            let currentSortType = '';
+            
             function showPhoneModal(salonName, phoneNumber) {
                 const modal = document.getElementById('phoneModal');
                 document.getElementById('modalSalonName').textContent = salonName;
@@ -204,11 +224,32 @@ def index():
                 modal.classList.remove('show');
             }
             
+            function showServiceModal(sortType) {
+                currentSortType = sortType;
+                const modal = document.getElementById('serviceModal');
+                modal.classList.add('show');
+            }
+            
+            function closeServiceModal() {
+                const modal = document.getElementById('serviceModal');
+                modal.classList.remove('show');
+            }
+            
+            function selectService(serviceName) {
+                const query = '{{ request.args.get("q", "") }}';
+                const url = '?q=' + encodeURIComponent(query) + '&sort=' + currentSortType + '&service=' + encodeURIComponent(serviceName);
+                window.location.href = url;
+            }
+            
             // 모달 외부 클릭 시 닫기
             window.onclick = function(event) {
-                const modal = document.getElementById('phoneModal');
-                if (event.target == modal) {
+                const phoneModal = document.getElementById('phoneModal');
+                const serviceModal = document.getElementById('serviceModal');
+                if (event.target == phoneModal) {
                     closePhoneModal();
+                }
+                if (event.target == serviceModal) {
+                    closeServiceModal();
                 }
             }
         </script>
