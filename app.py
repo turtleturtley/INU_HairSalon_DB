@@ -3,7 +3,7 @@ import sqlite3
 
 app = Flask(__name__)
 
-# 천단위 콤마 추가 필터
+# [기능] 천단위 콤마 찍어주는 필터
 @app.template_filter('comma')
 def comma_filter(value):
     try:
@@ -11,28 +11,75 @@ def comma_filter(value):
     except:
         return value
 
-# 데이터베이스에 접속하는 배달 기사 함수
 def get_db_connection():
     conn = sqlite3.connect('database.db')
-    conn.row_factory = sqlite3.Row # 데이터를 딕셔너리처럼 다루기 위해 설정
+    conn.row_factory = sqlite3.Row 
     return conn
 
 @app.route('/')
 def index():
-    query = request.args.get('q', '') # 검색어 가져오기
+    query = request.args.get('q', '') 
+    sort_by = request.args.get('sort', 'name')  # name, price_low, price_high
     conn = get_db_connection()
     
-    # 1. 미용실 목록 가져오기 (검색어가 있으면 필터링)
     if query:
         search_term = f'%{query}%'
-        salons = conn.execute('SELECT * FROM salons WHERE name LIKE ? OR location LIKE ?', 
-                              (search_term, search_term)).fetchall()
+        # 미용실 이름, 위치, 그리고 메뉴 이름으로 검색
+        if sort_by == 'price_low':
+            # 최저가 기준 오름차순
+            salons = conn.execute('''
+                SELECT DISTINCT s.*, MIN(m.price) as min_price FROM salons s
+                LEFT JOIN menus m ON s.id = m.salon_id
+                WHERE s.name LIKE ? 
+                   OR s.location LIKE ? 
+                   OR m.service_name LIKE ?
+                GROUP BY s.id
+                ORDER BY min_price ASC, s.name
+            ''', (search_term, search_term, search_term)).fetchall()
+        elif sort_by == 'price_high':
+            # 최고가 기준 내림차순
+            salons = conn.execute('''
+                SELECT DISTINCT s.*, MAX(m.price) as max_price FROM salons s
+                LEFT JOIN menus m ON s.id = m.salon_id
+                WHERE s.name LIKE ? 
+                   OR s.location LIKE ? 
+                   OR m.service_name LIKE ?
+                GROUP BY s.id
+                ORDER BY max_price DESC, s.name
+            ''', (search_term, search_term, search_term)).fetchall()
+        else:
+            # 이름순
+            salons = conn.execute('''
+                SELECT DISTINCT s.* FROM salons s
+                LEFT JOIN menus m ON s.id = m.salon_id
+                WHERE s.name LIKE ? 
+                   OR s.location LIKE ? 
+                   OR m.service_name LIKE ?
+                ORDER BY s.name
+            ''', (search_term, search_term, search_term)).fetchall()
     else:
-        salons = conn.execute('SELECT * FROM salons').fetchall()
+        if sort_by == 'price_low':
+            # 최저가 기준 오름차순
+            salons = conn.execute('''
+                SELECT s.*, MIN(m.price) as min_price FROM salons s
+                LEFT JOIN menus m ON s.id = m.salon_id
+                GROUP BY s.id
+                ORDER BY min_price ASC, s.name
+            ''').fetchall()
+        elif sort_by == 'price_high':
+            # 최고가 기준 내림차순
+            salons = conn.execute('''
+                SELECT s.*, MAX(m.price) as max_price FROM salons s
+                LEFT JOIN menus m ON s.id = m.salon_id
+                GROUP BY s.id
+                ORDER BY max_price DESC, s.name
+            ''').fetchall()
+        else:
+            # 이름순
+            salons = conn.execute('SELECT * FROM salons ORDER BY name').fetchall()
     
     conn.close()
 
-    # 화면 디자인 (HTML)
     html = """
     <!doctype html>
     <html>
@@ -44,13 +91,17 @@ def index():
             .search-box { text-align: center; margin-bottom: 30px; }
             input[type="text"] { padding: 10px; width: 70%; border: 1px solid #ddd; border-radius: 5px; }
             button { padding: 10px 20px; background-color: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer; }
+            .sort-options { margin-top: 15px; display: flex; justify-content: center; gap: 10px; }
+            .sort-options a { padding: 8px 15px; text-decoration: none; border-radius: 5px; font-size: 0.9em; }
+            .sort-options a.active { background-color: #3498db; color: white; }
+            .sort-options a:not(.active) { background-color: #ecf0f1; color: #34495e; }
+            .sort-options a:not(.active):hover { background-color: #bdc3c7; }
             .card { border: 1px solid #eee; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-            .salon-name { font-size: 1.5em; font-weight: bold; }
-            .rating { color: #f1c40f; }
-            .location { color: #7f8c8d; font-size: 0.9em; margin-bottom: 15px; }
-            .menu-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+            .salon-name { font-size: 1.5em; font-weight: bold; color: #333; }
+            .location { color: #7f8c8d; font-size: 0.9em; margin-bottom: 15px; margin-top: 5px; }
+            .menu-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
             .menu-table td { border-bottom: 1px solid #f0f0f0; padding: 8px 0; }
-            .price { text-align: right; font-weight: bold; }
+            .price { text-align: right; font-weight: bold; color: #e74c3c; }
         </style>
     </head>
     <body>
@@ -58,9 +109,16 @@ def index():
         
         <div class="search-box">
             <form action="">
-                <input type="text" name="q" placeholder="미용실 이름이나 위치 검색..." value="{{ request.args.get('q', '') }}">
+                <input type="text" name="q" placeholder="미용실 이름, 위치, 메뉴 검색 (예: 남성커트, 여성커트)..." value="{{ request.args.get('q', '') }}">
+                <input type="hidden" name="sort" value="{{ request.args.get('sort', 'name') }}">
                 <button type="submit">검색</button>
             </form>
+            <div class="sort-options">
+                {% set current_sort = request.args.get('sort', 'name') %}
+                <a href="?q={{ request.args.get('q', '') }}&sort=name" class="{{ 'active' if current_sort == 'name' else '' }}">이름순</a>
+                <a href="?q={{ request.args.get('q', '') }}&sort=price_low" class="{{ 'active' if current_sort == 'price_low' else '' }}">가격 낮은순</a>
+                <a href="?q={{ request.args.get('q', '') }}&sort=price_high" class="{{ 'active' if current_sort == 'price_high' else '' }}">가격 높은순</a>
+            </div>
             {% if request.args.get('q') %}
             <div style="margin-top:10px;"><a href="/">전체 목록 보기</a></div>
             {% endif %}
@@ -72,10 +130,7 @@ def index():
 
         {% for salon in salons %}
         <div class="card">
-            <div class="salon-name">
-                {{ salon['name'] }} 
-                <span class="rating">★ {{ salon['rating'] }}</span>
-            </div>
+            <div class="salon-name">{{ salon['name'] }}</div>
             <div class="location">📍 {{ salon['location'] }}</div>
             
             {% set conn = get_db_connection() %}
@@ -85,7 +140,7 @@ def index():
                 {% for menu in menus %}
                 <tr>
                     <td>{{ menu['service_name'] }}</td>
-                    <td class="price">{{ menu['price'] }}원</td>
+                    <td class="price">{{ menu['price'] | comma }}원</td>
                 </tr>
                 {% endfor %}
             </table>
