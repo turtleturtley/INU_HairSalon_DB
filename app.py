@@ -3,6 +3,14 @@ import sqlite3
 
 app = Flask(__name__)
 
+# 천단위 콤마 추가 필터
+@app.template_filter('comma')
+def comma_filter(value):
+    try:
+        return "{:,}".format(value)
+    except:
+        return value
+
 # 데이터베이스에 접속하는 배달 기사 함수
 def get_db_connection():
     conn = sqlite3.connect('database.db')
