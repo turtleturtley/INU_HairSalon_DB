@@ -97,7 +97,7 @@ def index():
     <head>
         <title>인천대 미용실 찾기</title>
         <style>
-            body { font-family: 'Apple SD Gothic Neo', sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+            body { font-family: 'Apple SD Gothic Neo', sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; }
             h1 { text-align: center; color: #2c3e50; }
             .search-box { text-align: center; margin-bottom: 30px; }
             input[type="text"] { padding: 10px; width: 70%; border: 1px solid #ddd; border-radius: 5px; }
@@ -107,17 +107,25 @@ def index():
             .sort-options a.active { background-color: #3498db; color: white; }
             .sort-options a:not(.active) { background-color: #ecf0f1; color: #34495e; }
             .sort-options a:not(.active):hover { background-color: #bdc3c7; }
-            .card { border: 1px solid #eee; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
-            .salon-name { font-size: 1.5em; font-weight: bold; color: #333; }
-            .location { color: #7f8c8d; font-size: 0.9em; margin-bottom: 15px; margin-top: 5px; }
+            .salons-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+            .card { border: 1px solid #eee; border-radius: 10px; padding: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); position: relative; }
+            .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+            .salon-name { font-size: 1.3em; font-weight: bold; color: #333; flex: 1; }
+            .reservation-btn { padding: 8px 15px; background-color: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9em; }
+            .reservation-btn:hover { background-color: #229954; }
+            .location { color: #7f8c8d; font-size: 0.9em; margin-bottom: 15px; }
             .menu-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
             .menu-table td { border-bottom: 1px solid #f0f0f0; padding: 8px 0; }
             .price { text-align: right; font-weight: bold; color: #e74c3c; }
-            .reservation-section { margin-top: 15px; text-align: center; }
-            .reservation-btn { padding: 10px 20px; background-color: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; }
-            .reservation-btn:hover { background-color: #229954; }
-            .phone-display { margin-top: 10px; padding: 10px; background-color: #ecf0f1; border-radius: 5px; font-size: 1.1em; font-weight: bold; color: #2c3e50; display: none; }
-            .phone-display.show { display: block; }
+            .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+            .modal.show { display: flex; justify-content: center; align-items: center; }
+            .modal-content { background-color: white; padding: 30px; border-radius: 10px; text-align: center; max-width: 400px; width: 90%; box-shadow: 0 4px 20px rgba(0,0,0,0.3); }
+            .modal-content h2 { margin-top: 0; color: #2c3e50; }
+            .modal-content .phone-number { font-size: 1.5em; font-weight: bold; color: #3498db; margin: 20px 0; }
+            .modal-content .phone-link { display: inline-block; padding: 10px 20px; background-color: #3498db; color: white; text-decoration: none; border-radius: 5px; margin-top: 10px; }
+            .modal-content .phone-link:hover { background-color: #2980b9; }
+            .close-btn { float: right; font-size: 28px; font-weight: bold; color: #aaa; cursor: pointer; }
+            .close-btn:hover { color: #000; }
         </style>
     </head>
     <body>
@@ -142,40 +150,66 @@ def index():
 
         {% if not salons %}
             <p style="text-align:center;">검색 결과가 없습니다.</p>
-        {% endif %}
-
-        {% for salon in salons %}
-        <div class="card">
-            <div class="salon-name">{{ salon['name'] }}</div>
-            <div class="location">📍 {{ salon['location'] }}</div>
-            
-            {% set conn = get_db_connection() %}
-            {% set menus = conn.execute('SELECT * FROM menus WHERE salon_id = ?', (salon['id'],)).fetchall() %}
-            
-            <table class="menu-table">
-                {% for menu in menus %}
-                <tr>
-                    <td>{{ menu['service_name'] }}</td>
-                    <td class="price">{{ menu['price'] | comma }}원</td>
-                </tr>
-                {% endfor %}
-            </table>
-            {% if salon['phone'] %}
-            <div class="reservation-section">
-                <button class="reservation-btn" onclick="togglePhone({{ salon['id'] }})">📞 예약하기</button>
-                <div id="phone-{{ salon['id'] }}" class="phone-display">
-                    전화번호: <a href="tel:{{ salon['phone'] }}" style="color: #3498db; text-decoration: none;">{{ salon['phone'] }}</a>
+        {% else %}
+        <div class="salons-grid">
+            {% for salon in salons %}
+            <div class="card">
+                <div class="card-header">
+                    <div class="salon-name">{{ salon['name'] }}</div>
+                    {% if salon['phone'] %}
+                    <button class="reservation-btn" onclick="showPhoneModal('{{ salon['name'] }}', '{{ salon['phone'] }}')">📞 예약하기</button>
+                    {% endif %}
                 </div>
+                <div class="location">📍 {{ salon['location'] }}</div>
+                
+                {% set conn = get_db_connection() %}
+                {% set menus = conn.execute('SELECT * FROM menus WHERE salon_id = ?', (salon['id'],)).fetchall() %}
+                
+                <table class="menu-table">
+                    {% for menu in menus %}
+                    <tr>
+                        <td>{{ menu['service_name'] }}</td>
+                        <td class="price">{{ menu['price'] | comma }}원</td>
+                    </tr>
+                    {% endfor %}
+                </table>
+                {% set _ = conn.close() %}
             </div>
-            {% endif %}
-            {% set _ = conn.close() %}
+            {% endfor %}
         </div>
-        {% endfor %}
+        {% endif %}
+        
+        <!-- 모달 -->
+        <div id="phoneModal" class="modal">
+            <div class="modal-content">
+                <span class="close-btn" onclick="closePhoneModal()">&times;</span>
+                <h2>예약하기</h2>
+                <p id="modalSalonName" style="font-size: 1.2em; color: #2c3e50; margin-bottom: 20px;"></p>
+                <div class="phone-number" id="modalPhoneNumber"></div>
+                <a href="#" id="modalPhoneLink" class="phone-link">전화 걸기</a>
+            </div>
+        </div>
         
         <script>
-            function togglePhone(salonId) {
-                const phoneDisplay = document.getElementById('phone-' + salonId);
-                phoneDisplay.classList.toggle('show');
+            function showPhoneModal(salonName, phoneNumber) {
+                const modal = document.getElementById('phoneModal');
+                document.getElementById('modalSalonName').textContent = salonName;
+                document.getElementById('modalPhoneNumber').textContent = phoneNumber;
+                document.getElementById('modalPhoneLink').href = 'tel:' + phoneNumber;
+                modal.classList.add('show');
+            }
+            
+            function closePhoneModal() {
+                const modal = document.getElementById('phoneModal');
+                modal.classList.remove('show');
+            }
+            
+            // 모달 외부 클릭 시 닫기
+            window.onclick = function(event) {
+                const modal = document.getElementById('phoneModal');
+                if (event.target == modal) {
+                    closePhoneModal();
+                }
             }
         </script>
     </body>
