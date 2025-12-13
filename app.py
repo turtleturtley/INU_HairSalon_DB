@@ -24,7 +24,9 @@ def index():
     
     if query:
         search_term = f'%{query}%'
-        # 미용실 이름, 위치, 그리고 메뉴 이름으로 검색
+        # 띄어쓰기 제거한 검색어도 준비
+        search_term_no_space = f'%{query.replace(" ", "")}%'
+        # 미용실 이름, 위치, 그리고 메뉴 이름으로 검색 (띄어쓰기 무시)
         if sort_by == 'price_low':
             # 최저가 기준 오름차순
             salons = conn.execute('''
@@ -33,9 +35,12 @@ def index():
                 WHERE s.name LIKE ? 
                    OR s.location LIKE ? 
                    OR m.service_name LIKE ?
+                   OR REPLACE(s.name, ' ', '') LIKE ?
+                   OR REPLACE(s.location, ' ', '') LIKE ?
+                   OR REPLACE(m.service_name, ' ', '') LIKE ?
                 GROUP BY s.id
                 ORDER BY min_price ASC, s.name
-            ''', (search_term, search_term, search_term)).fetchall()
+            ''', (search_term, search_term, search_term, search_term_no_space, search_term_no_space, search_term_no_space)).fetchall()
         elif sort_by == 'price_high':
             # 최고가 기준 내림차순
             salons = conn.execute('''
@@ -44,9 +49,12 @@ def index():
                 WHERE s.name LIKE ? 
                    OR s.location LIKE ? 
                    OR m.service_name LIKE ?
+                   OR REPLACE(s.name, ' ', '') LIKE ?
+                   OR REPLACE(s.location, ' ', '') LIKE ?
+                   OR REPLACE(m.service_name, ' ', '') LIKE ?
                 GROUP BY s.id
                 ORDER BY max_price DESC, s.name
-            ''', (search_term, search_term, search_term)).fetchall()
+            ''', (search_term, search_term, search_term, search_term_no_space, search_term_no_space, search_term_no_space)).fetchall()
         else:
             # 이름순
             salons = conn.execute('''
@@ -55,8 +63,11 @@ def index():
                 WHERE s.name LIKE ? 
                    OR s.location LIKE ? 
                    OR m.service_name LIKE ?
+                   OR REPLACE(s.name, ' ', '') LIKE ?
+                   OR REPLACE(s.location, ' ', '') LIKE ?
+                   OR REPLACE(m.service_name, ' ', '') LIKE ?
                 ORDER BY s.name
-            ''', (search_term, search_term, search_term)).fetchall()
+            ''', (search_term, search_term, search_term, search_term_no_space, search_term_no_space, search_term_no_space)).fetchall()
     else:
         if sort_by == 'price_low':
             # 최저가 기준 오름차순
@@ -102,6 +113,11 @@ def index():
             .menu-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
             .menu-table td { border-bottom: 1px solid #f0f0f0; padding: 8px 0; }
             .price { text-align: right; font-weight: bold; color: #e74c3c; }
+            .reservation-section { margin-top: 15px; text-align: center; }
+            .reservation-btn { padding: 10px 20px; background-color: #27ae60; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; }
+            .reservation-btn:hover { background-color: #229954; }
+            .phone-display { margin-top: 10px; padding: 10px; background-color: #ecf0f1; border-radius: 5px; font-size: 1.1em; font-weight: bold; color: #2c3e50; display: none; }
+            .phone-display.show { display: block; }
         </style>
     </head>
     <body>
@@ -144,9 +160,24 @@ def index():
                 </tr>
                 {% endfor %}
             </table>
+            {% if salon['phone'] %}
+            <div class="reservation-section">
+                <button class="reservation-btn" onclick="togglePhone({{ salon['id'] }})">📞 예약하기</button>
+                <div id="phone-{{ salon['id'] }}" class="phone-display">
+                    전화번호: <a href="tel:{{ salon['phone'] }}" style="color: #3498db; text-decoration: none;">{{ salon['phone'] }}</a>
+                </div>
+            </div>
+            {% endif %}
             {% set _ = conn.close() %}
         </div>
         {% endfor %}
+        
+        <script>
+            function togglePhone(salonId) {
+                const phoneDisplay = document.getElementById('phone-' + salonId);
+                phoneDisplay.classList.toggle('show');
+            }
+        </script>
     </body>
     </html>
     """

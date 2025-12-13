@@ -1,6 +1,12 @@
 import sqlite3 # SQL lite 사용
+import os      # [추가됨] 파일 삭제 기능을 위해 필요
 
 def init_db():
+    # [추가됨] 기존 database.db 파일이 있으면 삭제함 (매번 rm 치기 귀찮음 방지)
+    if os.path.exists('database.db'):
+        os.remove('database.db')
+        print("기존 데이터베이스를 삭제하고 새로 생성합니다...")
+
     # 데이터베이스 파일 생성 (파일이 없으면 만들고 연결함)
     conn = sqlite3.connect('database.db')
     cursor = conn.cursor()
@@ -11,9 +17,16 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         location TEXT,
+        phone TEXT,
         source_url TEXT
     )
     ''')
+    
+    # 전화번호 컬럼이 없으면 추가 (기존 데이터베이스 마이그레이션)
+    try:
+        cursor.execute('ALTER TABLE salons ADD COLUMN phone TEXT')
+    except sqlite3.OperationalError:
+        pass  # 컬럼이 이미 존재하는 경우
 
     # 2. 메뉴/가격 테이블 (Menus)
     # 미용실 ID(salon_id)를 외래키로 사용하여 미용실과 연결
@@ -72,6 +85,26 @@ def init_db():
         cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon4_id, '여성 커트', 44000))
         cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon4_id, '펌', 165000))
         cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon4_id, '염색', 170000))
+
+        # [5] 송유헤어
+        cursor.execute("INSERT INTO salons (name, location, phone) VALUES (?, ?, ?)",
+                       ('송유헤어', '인천 연수구 하모니로138번길 11 송도캐슬센트럴파크 102동 325호', '0507-1396-3022'))
+        salon5_id = cursor.lastrowid
+        
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon5_id, '남성 커트', 23000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon5_id, '여성 커트', 28000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon5_id, '펌', 79000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon5_id, '염색', 70000))
+
+        # [6] 리닛
+        cursor.execute("INSERT INTO salons (name, location, phone) VALUES (?, ?, ?)",
+                       ('리닛', '인천 연수구 하모니로 144 지웰푸르지오 b동 208호', '0507-1419-2453'))
+        salon6_id = cursor.lastrowid
+        
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon6_id, '남성 커트', 25000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon6_id, '여성 커트', 30000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon6_id, '펌', 90000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon6_id, '염색', 90000))
 
         conn.commit()
     else:
