@@ -152,8 +152,11 @@ def index():
                 font-style: normal;
             }
             * { box-sizing: border-box; }
-            body { font-family: 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; }
-            h1 { font-family: 'Cafe24Classictype', 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; text-align: center; color: #f0b0b0; font-size: 1.8em; margin-bottom: 30px; font-weight: 600; }
+            body { font-family: 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 1200px; margin: 0 auto; padding: 0; background-color: #f8f9fa; }
+            .cover-image-container { width: 100%; max-width: 1200px; margin: 0 auto; position: relative; }
+            .cover-image { width: 100%; height: auto; display: block; object-fit: cover; }
+            h1 { font-family: 'Cafe24Classictype', 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; text-align: center; color: #f0b0b0; font-size: 1.8em; margin: 30px 20px; font-weight: 600; }
+            .content-wrapper { padding: 0 20px 20px 20px; }
             .search-box { text-align: center; margin-bottom: 30px; }
             .search-wrapper { position: relative; display: inline-block; width: 70%; max-width: 600px; }
             .search-wrapper::before { content: '🔍'; position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-size: 1.2em; z-index: 1; }
@@ -232,6 +235,11 @@ def index():
         </style>
     </head>
     <body>
+        <div class="cover-image-container">
+            <img src="{{ url_for('static', filename='images/cover_2.jpg') }}" alt="Cover" class="cover-image">
+        </div>
+        
+        <div class="content-wrapper">
         <h1>The Cut : INU</h1>
         
         <div class="search-box">
@@ -542,6 +550,7 @@ def index():
                     <button type="submit" class="add-salon-submit-btn">미용실 등록하기</button>
                 </form>
             </div>
+        </div>
         </div>
     </body>
     </html>
