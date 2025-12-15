@@ -166,6 +166,68 @@ def init_db():
         cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon12_id, '펌', 90000))
         cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon12_id, '염색', 70000))
 
+        # [13] 마끼에 타임스페이스점
+        cursor.execute("INSERT INTO salons (name, location, phone) VALUES (?, ?, ?)",
+                       ('마끼에 타임스페이스점', '인천 연수구 하모니로 158 C동 307호, 308호', '0507-1411-5326'))
+        salon13_id = cursor.lastrowid
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon13_id, '남성 커트', 25000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon13_id, '여성 커트', 30000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon13_id, '펌', 100000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon13_id, '염색', 120000))
+
+        # [14] 아인크헤어 인천송도점
+        cursor.execute("INSERT INTO salons (name, location, phone) VALUES (?, ?, ?)",
+                       ('아인크헤어 인천송도점', '인천 연수구 하모니로178번길 6 송도 중앙타워 2층 215, 216, 217호', '0507-1350-7471'))
+        salon14_id = cursor.lastrowid
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon14_id, '남성 커트', 35000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon14_id, '여성 커트', 35000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon14_id, '펌', 140000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon14_id, '염색', 130000))
+
+        # [15] 로미 메이크 헤어
+        cursor.execute("INSERT INTO salons (name, location, phone) VALUES (?, ?, ?)",
+                       ('로미 메이크 헤어', '인천 연수구 송도과학로27번길 15 1층 121호 로미 메이크 헤어', '0507-1329-7699'))
+        salon15_id = cursor.lastrowid
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon15_id, '남성 커트', 25000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon15_id, '여성 커트', 25000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon15_id, '펌', 100000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon15_id, '염색', 100000))
+
+        # [16] 제이디로얄 맨즈헤어 송도점
+        cursor.execute("INSERT INTO salons (name, location, phone) VALUES (?, ?, ?)",
+                       ('제이디로얄 맨즈헤어 송도점', '인천 연수구 연구단지로55번길 16 2층 235호', '0507-1479-9326'))
+        salon16_id = cursor.lastrowid
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon16_id, '남성 커트', 25000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon16_id, '펌', 90000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon16_id, '염색', 70000))
+
+        # [17] 잇키
+        cursor.execute("INSERT INTO salons (name, location, phone) VALUES (?, ?, ?)",
+                       ('잇키', '인천 연수구 인천타워대로180번길 11 B동 201, 202호', '0507-1416-1192'))
+        salon17_id = cursor.lastrowid
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon17_id, '남성 커트', 30000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon17_id, '여성 커트', 30000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon17_id, '펌', 120000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon17_id, '염색', 110000))
+
+        # [18] 라비앙르로즈 송도동점
+        cursor.execute("INSERT INTO salons (name, location, phone) VALUES (?, ?, ?)",
+                       ('라비앙르로즈 송도동점', '인천 연수구 하모니로 158 타임스페이스 C동 212호', '0507-1483-6616'))
+        salon18_id = cursor.lastrowid
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon18_id, '남성 커트', 13000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon18_id, '여성 커트', 13000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon18_id, '펌', 35000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon18_id, '염색', 38000))
+
+        # [19] 스타일하우스 송도퍼스트파크점
+        cursor.execute("INSERT INTO salons (name, location, phone) VALUES (?, ?, ?)",
+                       ('스타일하우스 송도퍼스트파크점', '인천 연수구 컨벤시아대로230번길 54 닥터플러스몰 A동 216호 스타일하우스 송도퍼스트파크점', '0507-1442-7926'))
+        salon19_id = cursor.lastrowid
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon19_id, '남성 커트', 26000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon19_id, '여성 커트', 28000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon19_id, '펌', 100000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon19_id, '염색', 110000))
+
         conn.commit()
     else:
         print("이미 데이터가 존재합니다.")

@@ -16,6 +16,15 @@ def get_db_connection():
     conn.row_factory = sqlite3.Row 
     return conn
 
+def prepare_location(address, limit=35):
+    if not address:
+        return '', '', False
+    address = address.strip()
+    if len(address) <= limit:
+        return address, address, False
+    short = address[:limit].rstrip() + '...'
+    return short, address, True
+
 @app.route('/')
 def index():
     query = request.args.get('q', '') 
@@ -91,6 +100,12 @@ def index():
             salons = conn.execute('SELECT * FROM salons ORDER BY name').fetchall()
     
     conn.close()
+    salons = [dict(s) for s in salons]
+    for salon in salons:
+        short_loc, full_loc, is_truncated = prepare_location(salon.get('location', ''))
+        salon['display_location'] = short_loc
+        salon['full_location'] = full_loc
+        salon['is_location_truncated'] = is_truncated
 
     html = """
     <!doctype html>
@@ -116,7 +131,9 @@ def index():
             .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; position: relative; }
             .salon-name { font-size: 1.3em; font-weight: 600; color: #333; flex: 1; line-height: 1.4; }
             .reservation-btn { padding: 8px 12px; background-color: #FF6B9D; color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 1.2em; box-shadow: 0 2px 8px rgba(255, 107, 157, 0.3); position: relative; }
-            .location { color: #888; font-size: 0.9em; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; }
+            .location { color: #888; font-size: 0.9em; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; cursor: pointer; }
+            .location.collapsed { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+            .location.expanded { white-space: normal; }
             .location::before { content: '📍'; font-size: 1.1em; }
             .menu-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
             .menu-table td { border-bottom: 1px solid #f0f0f0; padding: 10px 0; }
@@ -203,11 +220,21 @@ def index():
                     </button>
                     {% endif %}
                 </div>
-                <div class="location">📍 {{ salon['location'] }}</div>
+                <div class="location {% if salon['is_location_truncated'] %}collapsed{% endif %}"
+                     data-full="{{ salon['full_location'] }}"
+                     data-short="{{ salon['display_location'] }}"
+                     data-is-long="{{ 'true' if salon['is_location_truncated'] else 'false' }}"
+                     onclick="toggleLocation(this)">
+                    📍 <span class="location-text">{{ salon['display_location'] if salon['is_location_truncated'] else salon['full_location'] }}</span>
+                </div>
                 
                 {% set conn = get_db_connection() %}
-                {% set menus = conn.execute('SELECT * FROM menus WHERE salon_id = ?', (salon['id'],)).fetchall() %}
-                
+                {% set service_filter = service_type if sort_by.startswith('price_') else '' %}
+                {% if service_filter %}
+                    {% set menus = conn.execute('SELECT * FROM menus WHERE salon_id = ? AND (service_name = ? OR REPLACE(service_name, " ", "") = ?)', (salon['id'], service_filter, service_filter.replace(" ", ""))).fetchall() %}
+                {% else %}
+                    {% set menus = conn.execute('SELECT * FROM menus WHERE salon_id = ?', (salon['id'],)).fetchall() %}
+                {% endif %}
                 <table class="menu-table">
                     {% for menu in menus %}
                     <tr>
@@ -257,6 +284,14 @@ def index():
                 const url = '?q=' + encodeURIComponent(query) + '&sort=' + currentSortType + '&service=' + encodeURIComponent(serviceName);
                 window.location.href = url;
             }
+
+            function toggleLocation(element) {
+                if (element.dataset.isLong !== 'true') return;
+                const textEl = element.querySelector('.location-text');
+                const isExpanded = element.classList.toggle('expanded');
+                element.classList.toggle('collapsed', !isExpanded);
+                textEl.textContent = isExpanded ? element.dataset.full : element.dataset.short;
+            }
             
             // 모달 외부 클릭 시 닫기
             document.addEventListener('click', function(event) {
@@ -268,7 +303,14 @@ def index():
     </body>
     </html>
     """
-    return render_template_string(html, salons=salons, get_db_connection=get_db_connection, request=request)
+    return render_template_string(
+        html,
+        salons=salons,
+        get_db_connection=get_db_connection,
+        request=request,
+        sort_by=sort_by,
+        service_type=service_type
+    )
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
