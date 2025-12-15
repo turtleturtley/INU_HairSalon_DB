@@ -111,39 +111,46 @@ def index():
     <!doctype html>
     <html>
     <head>
-        <title>인천대 미용실 찾기</title>
+        <title>The Cut : INU</title>
+        <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/icon.jpg') }}">
         <style>
+            @font-face {
+                font-family: 'Cafe24Classictype';
+                src: url('{{ url_for("static", filename="fonts/Cafe24Classictype-v1.1.ttf") }}') format('truetype');
+                font-weight: normal;
+                font-style: normal;
+            }
             * { box-sizing: border-box; }
             body { font-family: 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; }
-            h1 { text-align: center; color: #FF6B9D; font-size: 1.8em; margin-bottom: 30px; font-weight: 600; }
+            h1 { font-family: 'Cafe24Classictype', 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; text-align: center; color: #f0b0b0; font-size: 1.8em; margin-bottom: 30px; font-weight: 600; }
             .search-box { text-align: center; margin-bottom: 30px; }
             .search-wrapper { position: relative; display: inline-block; width: 70%; max-width: 600px; }
             .search-wrapper::before { content: '🔍'; position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-size: 1.2em; z-index: 1; }
             input[type="text"] { padding: 12px 15px 12px 45px; width: 100%; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 1em; }
-            input[type="text"]:focus { outline: none; border-color: #FF6B9D; box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1); }
-            button[type="submit"] { padding: 12px 30px; background-color: #FF6B9D; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 1em; font-weight: 600; margin-top: 15px; box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3); }
+            input[type="text"]:focus { outline: none; border-color: #f0b0b0; box-shadow: 0 0 0 3px rgba(240, 176, 176, 0.1); }
+            button[type="submit"] { padding: 12px 30px; background-color: #f0b0b0; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 1em; font-weight: 600; margin-top: 15px; box-shadow: 0 4px 15px rgba(240, 176, 176, 0.3); }
             .sort-options { margin-top: 20px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
             .sort-options a { padding: 10px 20px; text-decoration: none; border-radius: 20px; font-size: 0.9em; font-weight: 500; }
-            .sort-options a.active { background-color: #FF6B9D; color: white; box-shadow: 0 2px 10px rgba(255, 107, 157, 0.3); }
+            .sort-options a.active { background-color: #f0b0b0; color: white; box-shadow: 0 2px 10px rgba(240, 176, 176, 0.3); }
             .sort-options a:not(.active) { background-color: white; color: #666; border: 2px solid #e0e0e0; }
             .salons-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
             .card { background: white; border: none; border-radius: 15px; padding: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); position: relative; }
             .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; position: relative; }
             .salon-name { font-size: 1.3em; font-weight: 600; color: #333; flex: 1; line-height: 1.4; }
-            .reservation-btn { padding: 8px 12px; background-color: #FF6B9D; color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 1.2em; box-shadow: 0 2px 8px rgba(255, 107, 157, 0.3); position: relative; }
+            .reservation-btn { padding: 8px 12px; background-color: #f0b0b0; color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 1.2em; box-shadow: 0 2px 8px rgba(240, 176, 176, 0.3); position: relative; }
             .location { color: #888; font-size: 0.9em; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; cursor: pointer; }
             .location.collapsed { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             .location.expanded { white-space: normal; }
-            .location::before { content: '📍'; font-size: 1.1em; }
+            .location-icon { width: 16px; height: 16px; object-fit: contain; flex-shrink: 0; }
             .menu-table { width: 100%; border-collapse: collapse; margin-top: 15px; }
             .menu-table td { border-bottom: 1px solid #f0f0f0; padding: 10px 0; }
             .menu-table tr:last-child td { border-bottom: none; }
-            .price { text-align: right; font-weight: 600; color: #FF6B9D; font-size: 1.05em; }
+            .price { text-align: right; font-weight: 600; color: #f0b0b0; font-size: 1.05em; }
             .modal { display: none; position: absolute; z-index: 1000; }
             .modal.show { display: block; }
             .modal-content { background-color: white; padding: 10px; border-radius: 10px; text-align: center; min-width: 200px; box-shadow: 0 4px 15px rgba(0,0,0,0.2); position: relative; top: 5px; right: 0; }
             .modal-content .phone-number { font-size: 0.9em; font-weight: bold; color: #444; margin: 8px 0; }
-            .modal-content .phone-link { display: inline-block; padding: 6px 12px; background-color: #FF6B9D; color: white; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 0.85em; box-shadow: 0 2px 8px rgba(255, 107, 157, 0.3); }
+            .modal-content .phone-link { display: inline-block; padding: 6px 12px; background-color: #f0b0b0; color: white; text-decoration: none; border-radius: 12px; font-weight: 600; font-size: 0.85em; box-shadow: 0 2px 8px rgba(240, 176, 176, 0.3); }
             .reservation-btn { position: relative; }
             .reservation-btn .modal { left: auto; right: 0; top: 100%; margin-top: 5px; }
             .service-options { display: flex; flex-direction: row; gap: 8px; }
@@ -159,7 +166,7 @@ def index():
         </style>
     </head>
     <body>
-        <h1>✂️ 인천대 헤어샵 모음</h1>
+        <h1>The Cut : INU</h1>
         
         <div class="search-box">
             <form action="">
@@ -225,7 +232,8 @@ def index():
                      data-short="{{ salon['display_location'] }}"
                      data-is-long="{{ 'true' if salon['is_location_truncated'] else 'false' }}"
                      onclick="toggleLocation(this)">
-                    📍 <span class="location-text">{{ salon['display_location'] if salon['is_location_truncated'] else salon['full_location'] }}</span>
+                    <img src="{{ url_for('static', filename='images/Subject 6.png') }}" alt="위치" class="location-icon">
+                    <span class="location-text">{{ salon['display_location'] if salon['is_location_truncated'] else salon['full_location'] }}</span>
                 </div>
                 
                 {% set conn = get_db_connection() %}

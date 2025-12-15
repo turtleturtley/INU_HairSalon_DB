@@ -228,6 +228,32 @@ def init_db():
         cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon19_id, '펌', 100000))
         cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon19_id, '염색', 110000))
 
+        # [20] 덕무드헤어 송도타임스페이스점
+        cursor.execute("INSERT INTO salons (name, location, phone) VALUES (?, ?, ?)",
+                       ('덕무드헤어 송도타임스페이스점', '인천 연수구 하모니로 158 B동 314호', '0507-1449-0237'))
+        salon20_id = cursor.lastrowid
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon20_id, '남성 커트', 23000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon20_id, '여성 커트', 23000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon20_id, '펌', 84000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon20_id, '염색', 70000))
+
+        # [21] 아버헤어 트리플 2호점
+        cursor.execute("INSERT INTO salons (name, location, phone) VALUES (?, ?, ?)",
+                       ('아버헤어 트리플 2호점', '인천 연수구 송도과학로16번길 33-4 트리플스트리트 D동 지하 1층', '0507-1332-9360'))
+        salon21_id = cursor.lastrowid
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon21_id, '남성 커트', 25000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon21_id, '여성 커트', 30000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon21_id, '펌', 100000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon21_id, '염색', 100000))
+
+        # [22] 오프블랙바버샵
+        cursor.execute("INSERT INTO salons (name, location, phone) VALUES (?, ?, ?)",
+                       ('오프블랙바버샵', '인천 연수구 하모니로 158 타임스페이스 C동 지하1층 B20호', '0507-1371-7969'))
+        salon22_id = cursor.lastrowid
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon22_id, '남성 커트', 45000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon22_id, '펌', 140000))
+        cursor.execute("INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)", (salon22_id, '염색', 45000))
+
         conn.commit()
     else:
         print("이미 데이터가 존재합니다.")
