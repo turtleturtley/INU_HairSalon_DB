@@ -200,8 +200,15 @@ def index():
             .review-btn:hover { background-color: #e0a0a0; }
             .review-modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
             .review-modal.show { display: flex; align-items: center; justify-content: center; }
-            .review-modal-content { background-color: white; padding: 30px; border-radius: 10px; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); position: relative; }
+            .review-modal-content { background-color: white; padding: 30px; border-radius: 10px; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); position: relative; padding-top: 50px; }
             .review-modal h2 { margin-top: 0; margin-bottom: 20px; color: #333; text-align: center; }
+            .review-header-section { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; position: absolute; top: 15px; left: 30px; right: 50px; }
+            .review-write-btn { padding: 8px 16px; background-color: #f0b0b0; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9em; font-weight: 600; }
+            .review-write-btn:hover { background-color: #e0a0a0; }
+            .review-form-container { display: none; }
+            .review-form-container.show { display: block; }
+            .review-form-container.show ~ .review-list { display: none; }
+            .review-header-section:has(~ .review-form-container.show) .review-write-btn { display: none; }
             .review-form-group { margin-bottom: 20px; }
             .review-form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
             .review-form-group input[type="text"], .review-form-group textarea { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 1em; font-family: inherit; }
@@ -216,7 +223,9 @@ def index():
             .review-rating { color: #f0b0b0; font-weight: 600; }
             .review-date { color: #999; font-size: 0.85em; }
             .review-content { color: #666; line-height: 1.6; }
-            .review-submit-btn { padding: 12px 30px; background-color: #f0b0b0; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; font-weight: 600; width: 100%; box-shadow: 0 4px 15px rgba(240, 176, 176, 0.3); }
+            .review-submit-btn { padding: 12px 20px; background-color: #f0b0b0; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; font-weight: 600; box-shadow: 0 4px 15px rgba(240, 176, 176, 0.3); width: 100%; }
+            .review-btn-container { display: flex; gap: 10px; width: 100%; align-items: stretch; }
+            .review-btn-container button { flex: 1; min-width: 0; padding: 12px 20px; font-size: 1em; font-weight: 600; height: 48px; box-sizing: border-box; line-height: 24px; display: inline-flex; align-items: center; justify-content: center; margin: 0; }
             .review-submit-btn:hover { background-color: #e0a0a0; }
             .review-close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
             .review-close-btn:hover { color: #333; }
@@ -554,11 +563,12 @@ def index():
             function showReviewModal(salonId) {
                 document.getElementById('reviewModal').setAttribute('data-salon-id', salonId);
                 document.getElementById('reviewModal').classList.add('show');
+                // 리뷰 목록 로드
                 loadReviews(salonId);
-            }
-            
-            function closeReviewModal() {
-                document.getElementById('reviewModal').classList.remove('show');
+                // 작성 폼은 숨김
+                document.getElementById('reviewFormContainer').classList.remove('show');
+                const writeBtn = document.querySelector('.review-write-btn');
+                if (writeBtn) writeBtn.style.display = 'block';
             }
             
             function loadReviews(salonId) {
@@ -589,11 +599,35 @@ def index():
                     });
             }
             
+            function closeReviewModal() {
+                document.getElementById('reviewModal').classList.remove('show');
+                document.getElementById('reviewFormContainer').classList.remove('show');
+                document.getElementById('reviewForm').reset();
+                const writeBtn = document.querySelector('.review-write-btn');
+                if (writeBtn) writeBtn.style.display = 'block';
+            }
+            
+            function toggleReviewForm() {
+                const formContainer = document.getElementById('reviewFormContainer');
+                const reviewList = document.querySelector('.review-list');
+                const writeBtn = document.querySelector('.review-write-btn');
+                formContainer.classList.toggle('show');
+                if (formContainer.classList.contains('show')) {
+                    writeBtn.style.display = 'none';
+                    if (reviewList) reviewList.style.display = 'none';
+                } else {
+                    writeBtn.style.display = 'block';
+                    if (reviewList) reviewList.style.display = 'block';
+                }
+            }
+            
+            
             document.getElementById('reviewForm')?.addEventListener('submit', function(e) {
                 e.preventDefault();
                 const salonId = document.getElementById('reviewModal').getAttribute('data-salon-id');
                 const formData = new FormData(this);
                 formData.append('salon_id', salonId);
+                formData.append('author', '익명'); // 작성자 이름 제거, 기본값으로 '익명' 설정
                 
                 fetch('/api/reviews', {
                     method: 'POST',
@@ -603,7 +637,11 @@ def index():
                 .then(data => {
                     if (data.success) {
                         document.getElementById('reviewForm').reset();
-                        loadReviews(salonId);
+                        document.getElementById('reviewFormContainer').classList.remove('show');
+                        const writeBtn = document.querySelector('.review-write-btn');
+                        if (writeBtn) writeBtn.style.display = 'block';
+                        // 페이지 새로고침하여 평균 평점 업데이트
+                        window.location.reload();
                     } else {
                         alert('리뷰 작성 중 오류가 발생했습니다.');
                     }
@@ -666,32 +704,34 @@ def index():
         <div id="reviewModal" class="review-modal">
             <div class="review-modal-content">
                 <button class="review-close-btn" onclick="closeReviewModal()">&times;</button>
-                <h2>리뷰</h2>
+                <div class="review-header-section">
+                    <h2 style="margin: 0;">리뷰</h2>
+                    <button class="review-write-btn" onclick="toggleReviewForm()">리뷰 작성하기</button>
+                </div>
                 
-                <form id="reviewForm">
-                    <div class="review-form-group">
-                        <label for="reviewAuthor">작성자 *</label>
-                        <input type="text" id="reviewAuthor" name="author" required>
-                    </div>
-                    
-                    <div class="review-form-group">
-                        <label for="reviewRating">평점 *</label>
-                        <div class="rating-input">
-                            <input type="number" id="reviewRating" name="rating" min="1" max="5" value="5" required>
-                            <span>/ 5</span>
+                <div class="review-form-container" id="reviewFormContainer">
+                    <form id="reviewForm">
+                        <div class="review-form-group">
+                            <label for="reviewRating">평점 *</label>
+                            <div class="rating-input">
+                                <input type="number" id="reviewRating" name="rating" min="1" max="5" value="5" required>
+                                <span>/ 5</span>
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="review-form-group">
-                        <label for="reviewContent">리뷰 내용 *</label>
-                        <textarea id="reviewContent" name="content" required placeholder="리뷰를 작성해주세요..."></textarea>
-                    </div>
-                    
-                    <button type="submit" class="review-submit-btn">리뷰 작성하기</button>
-                </form>
+                        
+                        <div class="review-form-group">
+                            <label for="reviewContent">리뷰 내용 *</label>
+                            <textarea id="reviewContent" name="content" required placeholder="리뷰를 작성해주세요..."></textarea>
+                        </div>
+                        
+                        <div class="review-btn-container">
+                            <button type="submit" class="review-submit-btn">작성하기</button>
+                            <button type="button" class="review-submit-btn" onclick="toggleReviewForm()" style="background-color: #6c757d;">취소</button>
+                        </div>
+                    </form>
+                </div>
                 
                 <div class="review-list">
-                    <h3 style="margin-bottom: 15px;">리뷰 목록</h3>
                     <div id="reviewList">
                         <p style="text-align: center; color: #999;">로딩 중...</p>
                     </div>
