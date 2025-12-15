@@ -22,11 +22,6 @@ def init_db():
     )
     ''')
     
-    # 전화번호 컬럼이 없으면 추가 (기존 데이터베이스 마이그레이션)
-    try:
-        cursor.execute('ALTER TABLE salons ADD COLUMN phone TEXT')
-    except sqlite3.OperationalError:
-        pass  # 컬럼이 이미 존재하는 경우
 
     # 2. 메뉴/가격 테이블 (Menus)
     # 미용실 ID(salon_id)를 외래키로 사용하여 미용실과 연결

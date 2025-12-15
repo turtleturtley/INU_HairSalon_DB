@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request, redirect, url_for
+from flask import Flask, render_template_string, request, redirect, url_for, jsonify
 import sqlite3
 
 app = Flask(__name__)
@@ -14,6 +14,18 @@ def comma_filter(value):
 def get_db_connection():
     conn = sqlite3.connect('database.db')
     conn.row_factory = sqlite3.Row 
+    # 찜 테이블이 없으면 생성
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS favorites (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            salon_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (salon_id) REFERENCES salons (id),
+            UNIQUE(salon_id)
+        )
+    ''')
+    conn.commit()
     return conn
 
 def prepare_location(address, limit=35):
@@ -105,16 +117,25 @@ def index():
             # 이름순
             salons = conn.execute('SELECT * FROM salons ORDER BY name').fetchall()
     
+    # 찜한 미용실 필터링
+    if show_favorites:
+        conn = get_db_connection()
+        favorite_ids = [row['salon_id'] for row in conn.execute('SELECT salon_id FROM favorites').fetchall()]
+        conn.close()
+        salons = [s for s in salons if s['id'] in favorite_ids]
+    
     conn.close()
     salons = [dict(s) for s in salons]
     
-    # 각 미용실의 위치 정보 처리
+    # 각 미용실의 위치 정보 처리 및 찜 상태 확인
     conn = get_db_connection()
+    favorite_ids = set([row['salon_id'] for row in conn.execute('SELECT salon_id FROM favorites').fetchall()])
     for salon in salons:
         short_loc, full_loc, is_truncated = prepare_location(salon.get('location', ''))
         salon['display_location'] = short_loc
         salon['full_location'] = full_loc
         salon['is_location_truncated'] = is_truncated
+        salon['is_favorite'] = salon['id'] in favorite_ids
     conn.close()
 
     html = """
@@ -290,7 +311,7 @@ def index():
                             </div>
                         </div>
                     {% endif %}
-                        <button class="favorite-btn" onclick="toggleFavorite({{ salon['id'] }}, this)" data-salon-id="{{ salon['id'] }}">♡</button>
+                        <button class="favorite-btn {% if salon['is_favorite'] %}active{% endif %}" onclick="toggleFavorite({{ salon['id'] }}, this)" data-salon-id="{{ salon['id'] }}">{% if salon['is_favorite'] %}♥{% else %}♡{% endif %}</button>
                     </div>
                 </div>
                 <div class="location {% if salon['is_location_truncated'] %}collapsed{% endif %}"
@@ -326,72 +347,65 @@ def index():
         <script>
             let currentSortType = '';
             
-            // 찜 기능
-            function getFavorites() {
-                const favorites = localStorage.getItem('favorites');
-                return favorites ? JSON.parse(favorites) : [];
-            }
-            
-            function saveFavorites(favorites) {
-                localStorage.setItem('favorites', JSON.stringify(favorites));
-            }
-            
+            // 찜 기능 (DB 기반)
             function toggleFavorite(salonId, btn) {
-                const favorites = getFavorites();
-                const index = favorites.indexOf(salonId);
+                const isFavorite = btn.classList.contains('active');
                 
-                if (index > -1) {
-                    favorites.splice(index, 1);
-                    btn.classList.remove('active');
-                    btn.textContent = '♡';
-                } else {
-                    favorites.push(salonId);
-                    btn.classList.add('active');
-                    btn.textContent = '♥';
-                }
-                
-                saveFavorites(favorites);
-                filterFavorites();
+                fetch('/api/favorites', {
+                    method: isFavorite ? 'DELETE' : 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ salon_id: salonId })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        if (isFavorite) {
+                            btn.classList.remove('active');
+                            btn.textContent = '♡';
+                        } else {
+                            btn.classList.add('active');
+                            btn.textContent = '♥';
+                        }
+                        filterFavorites();
+                    } else {
+                        alert('찜 기능 처리 중 오류가 발생했습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error toggling favorite:', error);
+                    alert('찜 기능 처리 중 오류가 발생했습니다.');
+                });
             }
             
             function filterFavorites() {
                 const showFavorites = new URLSearchParams(window.location.search).get('favorites') === 'true';
                 if (!showFavorites) return;
                 
-                const favorites = getFavorites();
-                const cards = document.querySelectorAll('.card');
-                
-                cards.forEach(card => {
-                    const salonId = parseInt(card.getAttribute('data-salon-id'));
-                    if (favorites.includes(salonId)) {
-                        card.style.display = '';
-                    } else {
-                        card.style.display = 'none';
-                    }
-                });
+                fetch('/api/favorites')
+                    .then(response => response.json())
+                    .then(data => {
+                        const favoriteIds = data.favorites || [];
+                        const cards = document.querySelectorAll('.card');
+                        
+                        cards.forEach(card => {
+                            const salonId = parseInt(card.getAttribute('data-salon-id'));
+                            if (favoriteIds.includes(salonId)) {
+                                card.style.display = '';
+                            } else {
+                                card.style.display = 'none';
+                            }
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error loading favorites:', error);
+                    });
             }
             
-            function initFavorites() {
-                const favorites = getFavorites();
-                const favoriteBtns = document.querySelectorAll('.favorite-btn');
-                
-                favoriteBtns.forEach(btn => {
-                    const salonId = parseInt(btn.getAttribute('data-salon-id'));
-                    if (favorites.includes(salonId)) {
-                        btn.classList.add('active');
-                        btn.textContent = '♥';
-                    } else {
-                        btn.classList.remove('active');
-                        btn.textContent = '♡';
-                    }
-                });
-                
-                filterFavorites();
-            }
-            
-            // 페이지 로드 시 찜 상태 초기화
+            // 페이지 로드 시 찜 필터링 적용
             document.addEventListener('DOMContentLoaded', function() {
-                initFavorites();
+                filterFavorites();
             });
             
             function showPhoneModal(event, phoneNumber, salonId) {
@@ -541,6 +555,49 @@ def index():
         service_type=service_type,
         show_favorites=show_favorites
     )
+
+@app.route('/api/favorites', methods=['GET'])
+def get_favorites():
+    conn = get_db_connection()
+    favorites = conn.execute('SELECT salon_id FROM favorites').fetchall()
+    conn.close()
+    return jsonify({'favorites': [row['salon_id'] for row in favorites]})
+
+@app.route('/api/favorites', methods=['POST'])
+def add_favorite():
+    data = request.get_json()
+    salon_id = data.get('salon_id')
+    
+    if not salon_id:
+        return jsonify({'success': False, 'error': '미용실 ID가 필요합니다.'})
+    
+    conn = get_db_connection()
+    try:
+        conn.execute('INSERT OR IGNORE INTO favorites (salon_id) VALUES (?)', (salon_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
+
+@app.route('/api/favorites', methods=['DELETE'])
+def remove_favorite():
+    data = request.get_json()
+    salon_id = data.get('salon_id')
+    
+    if not salon_id:
+        return jsonify({'success': False, 'error': '미용실 ID가 필요합니다.'})
+    
+    conn = get_db_connection()
+    try:
+        conn.execute('DELETE FROM favorites WHERE salon_id = ?', (salon_id,))
+        conn.commit()
+        conn.close()
+        return jsonify({'success': True})
+    except Exception as e:
+        conn.close()
+        return jsonify({'success': False, 'error': str(e)})
 
 @app.route('/add', methods=['POST'])
 def add_salon():
