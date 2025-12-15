@@ -14,6 +14,20 @@ def comma_filter(value):
 def get_db_connection():
     conn = sqlite3.connect('database.db')
     conn.row_factory = sqlite3.Row 
+    # 리뷰 테이블이 없으면 생성
+    cursor = conn.cursor()
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS reviews (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            salon_id INTEGER NOT NULL,
+            author TEXT NOT NULL,
+            rating INTEGER NOT NULL CHECK(rating >= 1 AND rating <= 5),
+            content TEXT NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (salon_id) REFERENCES salons (id)
+        )
+    ''')
+    conn.commit()
     return conn
 
 def prepare_location(address, limit=35):
@@ -108,13 +122,25 @@ def index():
     conn.close()
     salons = [dict(s) for s in salons]
     
-    # 찜 필터링은 클라이언트 측에서 처리 (localStorage 사용)
-    
+    # 각 미용실의 평균 평점 계산
+    conn = get_db_connection()
     for salon in salons:
         short_loc, full_loc, is_truncated = prepare_location(salon.get('location', ''))
         salon['display_location'] = short_loc
         salon['full_location'] = full_loc
         salon['is_location_truncated'] = is_truncated
+        
+        # 평균 평점 계산
+        avg_rating = conn.execute(
+            'SELECT AVG(rating) as avg_rating FROM reviews WHERE salon_id = ?',
+            (salon['id'],)
+        ).fetchone()
+        salon['avg_rating'] = round(avg_rating['avg_rating'], 1) if avg_rating['avg_rating'] else None
+        salon['review_count'] = conn.execute(
+            'SELECT COUNT(*) as count FROM reviews WHERE salon_id = ?',
+            (salon['id'],)
+        ).fetchone()['count']
+    conn.close()
 
     html = """
     <!doctype html>
@@ -170,13 +196,40 @@ def index():
             .favorite-filter-btn.active { background-color: #f0b0b0; color: white; border-color: #f0b0b0; }
             .back-to-main-btn { padding: 10px 20px; background-color: #f0b0b0; color: white; text-decoration: none; border-radius: 5px; font-weight: 600; box-shadow: 0 2px 8px rgba(240, 176, 176, 0.3); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
             .back-to-main-btn:hover { background-color: #e0a0a0; }
+            .review-btn { padding: 6px 12px; background-color: #f0b0b0; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.85em; font-weight: 600; }
+            .review-btn:hover { background-color: #e0a0a0; }
+            .review-modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+            .review-modal.show { display: flex; align-items: center; justify-content: center; }
+            .review-modal-content { background-color: white; padding: 30px; border-radius: 10px; max-width: 700px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); position: relative; }
+            .review-modal h2 { margin-top: 0; margin-bottom: 20px; color: #333; text-align: center; }
+            .review-form-group { margin-bottom: 20px; }
+            .review-form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+            .review-form-group input[type="text"], .review-form-group textarea { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 1em; font-family: inherit; }
+            .review-form-group textarea { min-height: 100px; resize: vertical; }
+            .review-form-group input:focus, .review-form-group textarea:focus { outline: none; border-color: #f0b0b0; box-shadow: 0 0 0 3px rgba(240, 176, 176, 0.1); }
+            .rating-input { display: flex; gap: 5px; align-items: center; }
+            .rating-input input[type="number"] { width: 60px; padding: 8px; border: 2px solid #e0e0e0; border-radius: 5px; }
+            .review-list { margin-top: 30px; }
+            .review-item { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 15px; }
+            .review-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+            .review-author { font-weight: 600; color: #333; }
+            .review-rating { color: #f0b0b0; font-weight: 600; }
+            .review-date { color: #999; font-size: 0.85em; }
+            .review-content { color: #666; line-height: 1.6; }
+            .review-submit-btn { padding: 12px 30px; background-color: #f0b0b0; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; font-weight: 600; width: 100%; box-shadow: 0 4px 15px rgba(240, 176, 176, 0.3); }
+            .review-submit-btn:hover { background-color: #e0a0a0; }
+            .review-close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
+            .review-close-btn:hover { color: #333; }
             .sort-options a { padding: 10px 20px; text-decoration: none; border-radius: 5px; font-size: 0.9em; font-weight: 500; }
             .sort-options a.active { background-color: #f0b0b0; color: white; box-shadow: 0 2px 10px rgba(240, 176, 176, 0.3); }
             .sort-options a:not(.active) { background-color: white; color: #666; border: 2px solid #e0e0e0; }
             .salons-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
             .card { background: white; border: none; border-radius: 15px; padding: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); position: relative; }
             .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; position: relative; }
-            .salon-name { font-size: 1.3em; font-weight: 600; color: #333; flex: 1; line-height: 1.4; }
+            .salon-name { font-size: 1.3em; font-weight: 600; color: #333; flex: 1; line-height: 1.4; display: flex; align-items: center; gap: 8px; }
+            .rating-display { display: flex; align-items: center; gap: 5px; cursor: pointer; color: #f0b0b0; font-weight: 600; }
+            .rating-display:hover { opacity: 0.7; }
+            .star-icon { font-size: 1.2em; }
             .reservation-btn { padding: 0; background-color: transparent; border: none; cursor: pointer; position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
             .reservation-btn img { width: 24px; height: 24px; object-fit: contain; }
             .location { color: #888; font-size: 0.9em; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; cursor: pointer; }
@@ -274,7 +327,20 @@ def index():
             {% for salon in salons %}
             <div class="card" data-salon-id="{{ salon['id'] }}">
                 <div class="card-header">
-                    <div class="salon-name">{{ salon['name'] }}</div>
+                    <div class="salon-name">
+                        {{ salon['name'] }}
+                        {% if salon['avg_rating'] %}
+                        <span class="rating-display" onclick="showReviewModal({{ salon['id'] }})">
+                            <span class="star-icon">⭐</span>
+                            <span>{{ salon['avg_rating'] }}</span>
+                        </span>
+                        {% else %}
+                        <span class="rating-display" onclick="showReviewModal({{ salon['id'] }})" style="color: #999;">
+                            <span class="star-icon">⭐</span>
+                            <span>-</span>
+                        </span>
+                        {% endif %}
+                    </div>
                     <div style="display: flex; gap: 5px; align-items: center;">
                     {% if salon['phone'] %}
                         <button class="reservation-btn" onclick="showPhoneModal(event, '{{ salon['phone'] }}', {{ salon['id'] }})">
@@ -483,6 +549,76 @@ def index():
                     closeAddSalonModal();
                 }
             });
+            
+            // 리뷰 모달
+            function showReviewModal(salonId) {
+                document.getElementById('reviewModal').setAttribute('data-salon-id', salonId);
+                document.getElementById('reviewModal').classList.add('show');
+                loadReviews(salonId);
+            }
+            
+            function closeReviewModal() {
+                document.getElementById('reviewModal').classList.remove('show');
+            }
+            
+            function loadReviews(salonId) {
+                fetch(`/api/reviews/${salonId}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        const reviewList = document.getElementById('reviewList');
+                        if (data.reviews && data.reviews.length > 0) {
+                            reviewList.innerHTML = data.reviews.map(review => `
+                                <div class="review-item">
+                                    <div class="review-header">
+                                        <div>
+                                            <span class="review-author">${review.author}</span>
+                                            <span class="review-rating">⭐ ${review.rating}/5</span>
+                                        </div>
+                                        <span class="review-date">${new Date(review.created_at).toLocaleDateString('ko-KR')}</span>
+                                    </div>
+                                    <div class="review-content">${review.content}</div>
+                                </div>
+                            `).join('');
+                        } else {
+                            reviewList.innerHTML = '<p style="text-align: center; color: #999;">아직 리뷰가 없습니다.</p>';
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading reviews:', error);
+                        document.getElementById('reviewList').innerHTML = '<p style="text-align: center; color: #999;">리뷰를 불러오는 중 오류가 발생했습니다.</p>';
+                    });
+            }
+            
+            document.getElementById('reviewForm')?.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const salonId = document.getElementById('reviewModal').getAttribute('data-salon-id');
+                const formData = new FormData(this);
+                formData.append('salon_id', salonId);
+                
+                fetch('/api/reviews', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('reviewForm').reset();
+                        loadReviews(salonId);
+                    } else {
+                        alert('리뷰 작성 중 오류가 발생했습니다.');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error submitting review:', error);
+                    alert('리뷰 작성 중 오류가 발생했습니다.');
+                });
+            });
+            
+            document.getElementById('reviewModal')?.addEventListener('click', function(event) {
+                if (event.target === this) {
+                    closeReviewModal();
+                }
+            });
         </script>
         
         <!-- 미용실 추가 모달 -->
@@ -525,6 +661,43 @@ def index():
                 </form>
             </div>
         </div>
+        
+        <!-- 리뷰 모달 -->
+        <div id="reviewModal" class="review-modal">
+            <div class="review-modal-content">
+                <button class="review-close-btn" onclick="closeReviewModal()">&times;</button>
+                <h2>리뷰</h2>
+                
+                <form id="reviewForm">
+                    <div class="review-form-group">
+                        <label for="reviewAuthor">작성자 *</label>
+                        <input type="text" id="reviewAuthor" name="author" required>
+                    </div>
+                    
+                    <div class="review-form-group">
+                        <label for="reviewRating">평점 *</label>
+                        <div class="rating-input">
+                            <input type="number" id="reviewRating" name="rating" min="1" max="5" value="5" required>
+                            <span>/ 5</span>
+                        </div>
+                    </div>
+                    
+                    <div class="review-form-group">
+                        <label for="reviewContent">리뷰 내용 *</label>
+                        <textarea id="reviewContent" name="content" required placeholder="리뷰를 작성해주세요..."></textarea>
+                    </div>
+                    
+                    <button type="submit" class="review-submit-btn">리뷰 작성하기</button>
+                </form>
+                
+                <div class="review-list">
+                    <h3 style="margin-bottom: 15px;">리뷰 목록</h3>
+                    <div id="reviewList">
+                        <p style="text-align: center; color: #999;">로딩 중...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </body>
     </html>
     """
@@ -537,6 +710,43 @@ def index():
         service_type=service_type,
         show_favorites=show_favorites
     )
+
+@app.route('/api/reviews/<int:salon_id>', methods=['GET'])
+def get_reviews(salon_id):
+    conn = get_db_connection()
+    reviews = conn.execute(
+        'SELECT * FROM reviews WHERE salon_id = ? ORDER BY created_at DESC',
+        (salon_id,)
+    ).fetchall()
+    conn.close()
+    return {'reviews': [dict(r) for r in reviews]}
+
+@app.route('/api/reviews', methods=['POST'])
+def add_review():
+    salon_id = request.form.get('salon_id')
+    author = request.form.get('author', '').strip()
+    rating = request.form.get('rating')
+    content = request.form.get('content', '').strip()
+    
+    if not salon_id or not author or not rating or not content:
+        return {'success': False, 'error': '모든 필드를 입력해주세요.'}
+    
+    try:
+        rating = int(rating)
+        if rating < 1 or rating > 5:
+            return {'success': False, 'error': '평점은 1~5 사이여야 합니다.'}
+    except ValueError:
+        return {'success': False, 'error': '올바른 평점을 입력해주세요.'}
+    
+    conn = get_db_connection()
+    conn.execute(
+        'INSERT INTO reviews (salon_id, author, rating, content) VALUES (?, ?, ?, ?)',
+        (salon_id, author, rating, content)
+    )
+    conn.commit()
+    conn.close()
+    
+    return {'success': True}
 
 @app.route('/add', methods=['POST'])
 def add_salon():
