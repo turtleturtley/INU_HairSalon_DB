@@ -1,4 +1,4 @@
-from flask import Flask, render_template_string, request
+from flask import Flask, render_template_string, request, redirect, url_for
 import sqlite3
 
 app = Flask(__name__)
@@ -126,11 +126,35 @@ def index():
             .search-box { text-align: center; margin-bottom: 30px; }
             .search-wrapper { position: relative; display: inline-block; width: 70%; max-width: 600px; }
             .search-wrapper::before { content: '🔍'; position: absolute; left: 15px; top: 50%; transform: translateY(-50%); font-size: 1.2em; z-index: 1; }
-            input[type="text"] { padding: 12px 15px 12px 45px; width: 100%; border: 2px solid #e0e0e0; border-radius: 25px; font-size: 1em; }
+            input[type="text"] { padding: 12px 15px 12px 45px; width: 100%; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 1em; }
             input[type="text"]:focus { outline: none; border-color: #f0b0b0; box-shadow: 0 0 0 3px rgba(240, 176, 176, 0.1); }
-            button[type="submit"] { padding: 12px 30px; background-color: #f0b0b0; color: white; border: none; border-radius: 25px; cursor: pointer; font-size: 1em; font-weight: 600; margin-top: 15px; box-shadow: 0 4px 15px rgba(240, 176, 176, 0.3); }
-            .sort-options { margin-top: 20px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
-            .sort-options a { padding: 10px 20px; text-decoration: none; border-radius: 20px; font-size: 0.9em; font-weight: 500; }
+            button[type="submit"] { padding: 12px 20px; background-color: #f0b0b0; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9em; font-weight: 600; margin-top: 15px; box-shadow: 0 4px 15px rgba(240, 176, 176, 0.3); }
+            .sort-wrapper { margin-top: 20px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+            .sort-options { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; flex: 1; }
+            .add-salon-btn { padding: 10px 20px; background-color: #f0b0b0; color: white; text-decoration: none; border-radius: 5px; font-weight: 600; box-shadow: 0 2px 8px rgba(240, 176, 176, 0.3); white-space: nowrap; cursor: pointer; border: none; }
+            .add-salon-modal { display: none; position: fixed; z-index: 2000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+            .add-salon-modal.show { display: flex; align-items: center; justify-content: center; }
+            .add-salon-modal-content { background-color: white; padding: 30px; border-radius: 10px; max-width: 600px; width: 90%; max-height: 90vh; overflow-y: auto; box-shadow: 0 4px 20px rgba(0,0,0,0.3); position: relative; }
+            .add-salon-modal h2 { font-family: 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin-top: 0; margin-bottom: 20px; color: #333; text-align: center; }
+            .add-salon-form-group { margin-bottom: 20px; }
+            .add-salon-form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+            .add-salon-form-group input[type="text"], .add-salon-form-group input[type="tel"] { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 1em; }
+            .add-salon-menu-item input[type="text"] { padding: 12px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 1em; }
+            .add-salon-menu-item input[type="text"]:focus { outline: none; border-color: #f0b0b0; box-shadow: 0 0 0 3px rgba(240, 176, 176, 0.1); }
+            .add-salon-form-group input:focus { outline: none; border-color: #f0b0b0; box-shadow: 0 0 0 3px rgba(240, 176, 176, 0.1); }
+            .add-salon-menu-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+            .add-salon-menu-item input[type="text"] { flex: 1; }
+            .add-salon-remove-btn { padding: 8px 15px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9em; }
+            .add-salon-remove-btn:hover { background-color: #c82333; }
+            .add-salon-add-menu-btn { padding: 10px 20px; background-color: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9em; margin-bottom: 20px; }
+            .add-salon-add-menu-btn:hover { background-color: #5a6268; }
+            .add-salon-submit-btn { padding: 12px 30px; background-color: #f0b0b0; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; font-weight: 600; width: 100%; box-shadow: 0 4px 15px rgba(240, 176, 176, 0.3); }
+            .add-salon-submit-btn:hover { background-color: #e0a0a0; }
+            .add-salon-close-btn { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 24px; cursor: pointer; color: #999; }
+            .add-salon-close-btn:hover { color: #333; }
+            .add-salon-menu-section { background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+            .add-salon-error { background-color: #f8d7da; color: #721c24; padding: 12px; border-radius: 5px; margin-bottom: 20px; }
+            .sort-options a { padding: 10px 20px; text-decoration: none; border-radius: 5px; font-size: 0.9em; font-weight: 500; }
             .sort-options a.active { background-color: #f0b0b0; color: white; box-shadow: 0 2px 10px rgba(240, 176, 176, 0.3); }
             .sort-options a:not(.active) { background-color: white; color: #666; border: 2px solid #e0e0e0; }
             .salons-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
@@ -162,6 +186,9 @@ def index():
             @media (max-width: 768px) {
                 .salons-grid { grid-template-columns: 1fr; }
                 .search-wrapper { width: 100%; }
+                .sort-wrapper { flex-direction: column; align-items: stretch; }
+                .sort-options { justify-content: center; width: 100%; }
+                .add-salon-btn { text-align: center; width: 100%; }
             }
         </style>
     </head>
@@ -171,12 +198,13 @@ def index():
         <div class="search-box">
             <form action="">
                 <div class="search-wrapper">
-                    <input type="text" name="q" placeholder="미용실 이름, 위치, 메뉴 검색 (예: 남성커트, 여성커트)..." value="{{ request.args.get('q', '') }}">
+                    <input type="text" name="q" value="{{ request.args.get('q', '') }}">
                 </div>
                 <input type="hidden" name="sort" value="{{ request.args.get('sort', 'name') }}">
                 <button type="submit">검색</button>
             </form>
-            <div class="sort-options" style="position: relative;">
+            <div class="sort-wrapper">
+                <div class="sort-options" style="position: relative;">
                 {% set current_sort = request.args.get('sort', 'name') %}
                 {% set is_price_low = 'price_low' in current_sort %}
                 {% set is_price_high = 'price_high' in current_sort %}
@@ -205,6 +233,8 @@ def index():
                         </div>
                     </div>
                 </a>
+                </div>
+                <a href="#" onclick="showAddSalonModal(); return false;" class="add-salon-btn">+add</a>
             </div>
         </div>
 
@@ -307,7 +337,92 @@ def index():
                     document.querySelectorAll('.modal').forEach(m => m.classList.remove('show'));
                 }
             });
+            
+            function showAddSalonModal() {
+                document.getElementById('addSalonModal').classList.add('show');
+            }
+            
+            function closeAddSalonModal() {
+                document.getElementById('addSalonModal').classList.remove('show');
+            }
+            
+            function addMenuItem() {
+                const container = document.getElementById('add-salon-menu-container');
+                const newItem = document.createElement('div');
+                newItem.className = 'add-salon-menu-item';
+                newItem.innerHTML = `
+                    <input type="text" name="service_name[]" placeholder="서비스명 (예: 여성 커트)">
+                    <input type="text" name="price[]" placeholder="가격">
+                    <button type="button" class="add-salon-remove-btn" onclick="removeMenuItem(this)">삭제</button>
+                `;
+                container.appendChild(newItem);
+                
+                const firstItem = container.querySelector('.add-salon-menu-item');
+                if (firstItem && container.children.length > 1) {
+                    const firstRemoveBtn = firstItem.querySelector('.add-salon-remove-btn');
+                    if (firstRemoveBtn) firstRemoveBtn.style.display = 'block';
+                }
+            }
+            
+            function removeMenuItem(btn) {
+                const container = document.getElementById('add-salon-menu-container');
+                if (container.children.length > 1) {
+                    btn.parentElement.remove();
+                    if (container.children.length === 1) {
+                        const firstRemoveBtn = container.querySelector('.add-salon-remove-btn');
+                        if (firstRemoveBtn) firstRemoveBtn.style.display = 'none';
+                    }
+                }
+            }
+            
+            // 모달 외부 클릭 시 닫기
+            document.getElementById('addSalonModal')?.addEventListener('click', function(event) {
+                if (event.target === this) {
+                    closeAddSalonModal();
+                }
+            });
         </script>
+        
+        <!-- 미용실 추가 모달 -->
+        <div id="addSalonModal" class="add-salon-modal">
+            <div class="add-salon-modal-content">
+                <button class="add-salon-close-btn" onclick="closeAddSalonModal()">&times;</button>
+                <h2>새로운 미용실 추가하기</h2>
+                
+                <div id="addSalonError" class="add-salon-error" style="display: none;"></div>
+                
+                <form method="POST" action="/add" id="addSalonForm">
+                    <div class="add-salon-form-group">
+                        <label for="add-salon-name">미용실 이름 *</label>
+                        <input type="text" id="add-salon-name" name="name" required>
+                    </div>
+                    
+                    <div class="add-salon-form-group">
+                        <label for="add-salon-location">위치</label>
+                        <input type="text" id="add-salon-location" name="location">
+                    </div>
+                    
+                    <div class="add-salon-form-group">
+                        <label for="add-salon-phone">전화번호</label>
+                        <input type="tel" id="add-salon-phone" name="phone" placeholder="예: 0507-1234-5678">
+                    </div>
+                    
+                    <div class="add-salon-menu-section">
+                        <label style="margin-bottom: 15px; display: block;">메뉴 및 가격</label>
+                        <div id="add-salon-menu-container">
+                            <div class="add-salon-menu-item">
+                                <input type="text" name="service_name[]" placeholder="서비스명 (예: 남성 커트)">
+                                <input type="text" name="price[]" placeholder="가격">
+                                <button type="button" class="add-salon-remove-btn" onclick="removeMenuItem(this)" style="display: none;">삭제</button>
+                            </div>
+                        </div>
+                        <button type="button" class="add-salon-add-menu-btn" onclick="addMenuItem()">+ 메뉴 추가</button>
+                    </div>
+                    
+                    <button type="submit" class="add-salon-submit-btn">미용실 등록하기</button>
+                </form>
+            </div>
+        </div>
     </body>
     </html>
     """
@@ -319,6 +434,154 @@ def index():
         sort_by=sort_by,
         service_type=service_type
     )
+
+@app.route('/add', methods=['POST'])
+def add_salon():
+    name = request.form.get('name', '').strip()
+    location = request.form.get('location', '').strip()
+    phone = request.form.get('phone', '').strip() or None
+    
+    if not name:
+        return redirect(url_for('index'))
+    
+    conn = get_db_connection()
+    
+    # 미용실 추가
+    cursor = conn.cursor()
+    cursor.execute('INSERT INTO salons (name, location, phone) VALUES (?, ?, ?)',
+                  (name, location, phone))
+    salon_id = cursor.lastrowid
+    
+    # 메뉴 추가
+    service_names = request.form.getlist('service_name[]')
+    prices = request.form.getlist('price[]')
+    
+    for service_name, price in zip(service_names, prices):
+        service_name = service_name.strip()
+        try:
+            price = int(price.strip()) if price.strip() else 0
+            if service_name and price > 0:
+                cursor.execute('INSERT INTO menus (salon_id, service_name, price) VALUES (?, ?, ?)',
+                             (salon_id, service_name, price))
+        except ValueError:
+            continue
+    
+    conn.commit()
+    conn.close()
+    
+    return redirect(url_for('index'))
+
+add_salon_html = """
+<!doctype html>
+<html>
+<head>
+    <title>새로운 미용실 추가 - The Cut : INU</title>
+    <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='images/icon.jpg') }}">
+    <style>
+        @font-face {
+            font-family: 'Cafe24Classictype';
+            src: url('{{ url_for("static", filename="fonts/Cafe24Classictype-v1.1.ttf") }}') format('truetype');
+            font-weight: normal;
+            font-style: normal;
+        }
+        * { box-sizing: border-box; }
+        body { font-family: 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background-color: #f8f9fa; }
+        h1 { font-family: 'Cafe24Classictype', 'Apple SD Gothic Neo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; text-align: center; color: #f0b0b0; font-size: 1.8em; margin-bottom: 30px; font-weight: 600; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; }
+        input[type="text"], input[type="tel"], input[type="number"] { width: 100%; padding: 12px; border: 2px solid #e0e0e0; border-radius: 5px; font-size: 1em; }
+        input[type="text"]:focus, input[type="tel"]:focus, input[type="number"]:focus { outline: none; border-color: #f0b0b0; box-shadow: 0 0 0 3px rgba(240, 176, 176, 0.1); }
+        .menu-item { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+        .menu-item input[type="text"] { flex: 2; }
+        .menu-item input[type="number"] { flex: 1; }
+        .remove-btn { padding: 8px 15px; background-color: #dc3545; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9em; }
+        .remove-btn:hover { background-color: #c82333; }
+        .add-menu-btn { padding: 10px 20px; background-color: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 0.9em; margin-bottom: 20px; }
+        .add-menu-btn:hover { background-color: #5a6268; }
+        .submit-btn { padding: 12px 30px; background-color: #f0b0b0; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1em; font-weight: 600; width: 100%; box-shadow: 0 4px 15px rgba(240, 176, 176, 0.3); }
+        .submit-btn:hover { background-color: #e0a0a0; }
+        .back-btn { display: inline-block; padding: 10px 20px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 5px; margin-bottom: 20px; }
+        .back-btn:hover { background-color: #5a6268; }
+        .error { background-color: #f8d7da; color: #721c24; padding: 12px; border-radius: 5px; margin-bottom: 20px; }
+        .menu-section { background-color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <h1>새로운 미용실 추가하기</h1>
+    
+    <a href="/" class="back-btn">← 목록으로 돌아가기</a>
+    
+    {% if error %}
+    <div class="error">{{ error }}</div>
+    {% endif %}
+    
+    <form method="POST" action="/add">
+        <div class="form-group">
+            <label for="name">미용실 이름 *</label>
+            <input type="text" id="name" name="name" required>
+        </div>
+        
+        <div class="form-group">
+            <label for="location">위치</label>
+            <input type="text" id="location" name="location">
+        </div>
+        
+        <div class="form-group">
+            <label for="phone">전화번호</label>
+            <input type="tel" id="phone" name="phone" placeholder="예: 0507-1234-5678">
+        </div>
+        
+        <div class="menu-section">
+            <label style="margin-bottom: 15px; display: block;">메뉴 및 가격</label>
+            <div id="menu-container">
+                <div class="menu-item">
+                    <input type="text" name="service_name[]" placeholder="서비스명 (예: 남성 커트)">
+                    <input type="text" name="price[]" placeholder="가격">
+                    <button type="button" class="remove-btn" onclick="removeMenuItem(this)" style="display: none;">삭제</button>
+                </div>
+            </div>
+            <button type="button" class="add-menu-btn" onclick="addMenuItem()">+ 메뉴 추가</button>
+        </div>
+        
+        <button type="submit" class="submit-btn">미용실 등록하기</button>
+    </form>
+    
+    <script>
+        function addMenuItem() {
+            const container = document.getElementById('menu-container');
+            const newItem = document.createElement('div');
+            newItem.className = 'menu-item';
+            newItem.innerHTML = `
+                <input type="text" name="service_name[]" placeholder="서비스명 (예: 여성 커트)">
+                <input type="number" name="price[]" placeholder="가격" min="0">
+                <button type="button" class="remove-btn" onclick="removeMenuItem(this)">삭제</button>
+            `;
+            container.appendChild(newItem);
+            
+            // 첫 번째 항목에도 삭제 버튼 표시
+            const firstItem = container.querySelector('.menu-item');
+            if (firstItem && container.children.length > 1) {
+                const firstRemoveBtn = firstItem.querySelector('.remove-btn');
+                if (firstRemoveBtn) firstRemoveBtn.style.display = 'block';
+            }
+        }
+        
+        function removeMenuItem(btn) {
+            const container = document.getElementById('menu-container');
+            if (container.children.length > 1) {
+                btn.parentElement.remove();
+                
+                // 마지막 하나 남으면 첫 번째 항목의 삭제 버튼 숨기기
+                if (container.children.length === 1) {
+                    const firstRemoveBtn = container.querySelector('.remove-btn');
+                    if (firstRemoveBtn) firstRemoveBtn.style.display = 'none';
+                }
+            }
+        }
+    </script>
+</body>
+</html>
+"""
 
 if __name__ == '__main__':
     app.run(debug=True, port=5001)
