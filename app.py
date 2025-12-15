@@ -28,8 +28,14 @@ def prepare_location(address, limit=35):
 @app.route('/')
 def index():
     query = request.args.get('q', '') 
-    sort_by = request.args.get('sort', 'name')  # name, price_low_서비스명, price_high_서비스명
-    service_type = request.args.get('service', '')  # 남성커트, 여성커트, 펌, 염색
+    show_favorites = request.args.get('favorites', '') == 'true'
+    # 찜한 미용실 필터가 활성화되면 항상 이름순으로 정렬
+    if show_favorites:
+        sort_by = 'name'
+        service_type = ''
+    else:
+        sort_by = request.args.get('sort', 'name')  # name, price_low_서비스명, price_high_서비스명
+        service_type = request.args.get('service', '')  # 남성커트, 여성커트, 펌, 염색
     conn = get_db_connection()
     
     if query:
@@ -101,6 +107,9 @@ def index():
     
     conn.close()
     salons = [dict(s) for s in salons]
+    
+    # 찜 필터링은 클라이언트 측에서 처리 (localStorage 사용)
+    
     for salon in salons:
         short_loc, full_loc, is_truncated = prepare_location(salon.get('location', ''))
         salon['display_location'] = short_loc
@@ -154,6 +163,13 @@ def index():
             .add-salon-close-btn:hover { color: #333; }
             .add-salon-menu-section { background-color: #f8f9fa; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
             .add-salon-error { background-color: #f8d7da; color: #721c24; padding: 12px; border-radius: 5px; margin-bottom: 20px; }
+            .favorite-btn { padding: 0; background-color: transparent; color: #f0b0b0; border: none; cursor: pointer; font-size: 24px; transition: opacity 0.3s; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; line-height: 1; font-family: Arial, sans-serif; }
+            .favorite-btn:hover { opacity: 0.7; }
+            .favorite-btn.active { color: #f0b0b0; opacity: 1; }
+            .favorite-filter-btn { padding: 10px 20px; background-color: white; color: #666; border: 2px solid #e0e0e0; border-radius: 5px; text-decoration: none; font-size: 0.9em; font-weight: 500; }
+            .favorite-filter-btn.active { background-color: #f0b0b0; color: white; border-color: #f0b0b0; }
+            .back-to-main-btn { padding: 10px 20px; background-color: #f0b0b0; color: white; text-decoration: none; border-radius: 5px; font-weight: 600; box-shadow: 0 2px 8px rgba(240, 176, 176, 0.3); white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; }
+            .back-to-main-btn:hover { background-color: #e0a0a0; }
             .sort-options a { padding: 10px 20px; text-decoration: none; border-radius: 5px; font-size: 0.9em; font-weight: 500; }
             .sort-options a.active { background-color: #f0b0b0; color: white; box-shadow: 0 2px 10px rgba(240, 176, 176, 0.3); }
             .sort-options a:not(.active) { background-color: white; color: #666; border: 2px solid #e0e0e0; }
@@ -161,7 +177,8 @@ def index():
             .card { background: white; border: none; border-radius: 15px; padding: 25px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); position: relative; }
             .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 15px; position: relative; }
             .salon-name { font-size: 1.3em; font-weight: 600; color: #333; flex: 1; line-height: 1.4; }
-            .reservation-btn { padding: 8px 12px; background-color: #f0b0b0; color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 1.2em; box-shadow: 0 2px 8px rgba(240, 176, 176, 0.3); position: relative; }
+            .reservation-btn { padding: 0; background-color: transparent; border: none; cursor: pointer; position: relative; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; }
+            .reservation-btn img { width: 24px; height: 24px; object-fit: contain; }
             .location { color: #888; font-size: 0.9em; margin-bottom: 15px; display: flex; align-items: center; gap: 5px; cursor: pointer; }
             .location.collapsed { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             .location.expanded { white-space: normal; }
@@ -201,10 +218,14 @@ def index():
                     <input type="text" name="q" value="{{ request.args.get('q', '') }}">
                 </div>
                 <input type="hidden" name="sort" value="{{ request.args.get('sort', 'name') }}">
+                {% if show_favorites %}
+                <input type="hidden" name="favorites" value="true">
+                {% endif %}
                 <button type="submit">검색</button>
             </form>
             <div class="sort-wrapper">
-                <div class="sort-options" style="position: relative;">
+                {% if not show_favorites %}
+            <div class="sort-options" style="position: relative;">
                 {% set current_sort = request.args.get('sort', 'name') %}
                 {% set is_price_low = 'price_low' in current_sort %}
                 {% set is_price_high = 'price_high' in current_sort %}
@@ -234,7 +255,15 @@ def index():
                     </div>
                 </a>
                 </div>
-                <a href="#" onclick="showAddSalonModal(); return false;" class="add-salon-btn">+add</a>
+                {% endif %}
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    {% if show_favorites %}
+                    <a href="/" class="back-to-main-btn">←</a>
+                    {% else %}
+                    <a href="?q={{ request.args.get('q', '') }}&sort={{ request.args.get('sort', 'name') }}&favorites=true" class="favorite-filter-btn">찜한 미용실</a>
+                    <a href="#" onclick="showAddSalonModal(); return false;" class="add-salon-btn">+add</a>
+                    {% endif %}
+                </div>
             </div>
         </div>
 
@@ -243,19 +272,23 @@ def index():
         {% else %}
         <div class="salons-grid">
             {% for salon in salons %}
-            <div class="card">
+            <div class="card" data-salon-id="{{ salon['id'] }}">
                 <div class="card-header">
                     <div class="salon-name">{{ salon['name'] }}</div>
+                    <div style="display: flex; gap: 5px; align-items: center;">
                     {% if salon['phone'] %}
-                    <button class="reservation-btn" onclick="showPhoneModal(event, '{{ salon['phone'] }}', {{ salon['id'] }})">📞
+                        <button class="reservation-btn" onclick="showPhoneModal(event, '{{ salon['phone'] }}', {{ salon['id'] }})">
+                            <img src="{{ url_for('static', filename='images/call_icon.png') }}" alt="전화">
+                        </button>
                         <div id="phoneModal-{{ salon['id'] }}" class="modal">
                             <div class="modal-content">
                                 <div class="phone-number" id="modalPhoneNumber-{{ salon['id'] }}"></div>
                                 <a href="#" id="modalPhoneLink-{{ salon['id'] }}" class="phone-link">전화 걸기</a>
                             </div>
                         </div>
-                    </button>
                     {% endif %}
+                        <button class="favorite-btn" onclick="toggleFavorite({{ salon['id'] }}, this)" data-salon-id="{{ salon['id'] }}">♡</button>
+                    </div>
                 </div>
                 <div class="location {% if salon['is_location_truncated'] %}collapsed{% endif %}"
                      data-full="{{ salon['full_location'] }}"
@@ -290,6 +323,74 @@ def index():
         <script>
             let currentSortType = '';
             
+            // 찜 기능
+            function getFavorites() {
+                const favorites = localStorage.getItem('favorites');
+                return favorites ? JSON.parse(favorites) : [];
+            }
+            
+            function saveFavorites(favorites) {
+                localStorage.setItem('favorites', JSON.stringify(favorites));
+            }
+            
+            function toggleFavorite(salonId, btn) {
+                const favorites = getFavorites();
+                const index = favorites.indexOf(salonId);
+                
+                if (index > -1) {
+                    favorites.splice(index, 1);
+                    btn.classList.remove('active');
+                    btn.textContent = '♡';
+                } else {
+                    favorites.push(salonId);
+                    btn.classList.add('active');
+                    btn.textContent = '♥';
+                }
+                
+                saveFavorites(favorites);
+                filterFavorites();
+            }
+            
+            function filterFavorites() {
+                const showFavorites = new URLSearchParams(window.location.search).get('favorites') === 'true';
+                if (!showFavorites) return;
+                
+                const favorites = getFavorites();
+                const cards = document.querySelectorAll('.card');
+                
+                cards.forEach(card => {
+                    const salonId = parseInt(card.getAttribute('data-salon-id'));
+                    if (favorites.includes(salonId)) {
+                        card.style.display = '';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            }
+            
+            function initFavorites() {
+                const favorites = getFavorites();
+                const favoriteBtns = document.querySelectorAll('.favorite-btn');
+                
+                favoriteBtns.forEach(btn => {
+                    const salonId = parseInt(btn.getAttribute('data-salon-id'));
+                    if (favorites.includes(salonId)) {
+                        btn.classList.add('active');
+                        btn.textContent = '♥';
+                    } else {
+                        btn.classList.remove('active');
+                        btn.textContent = '♡';
+                    }
+                });
+                
+                filterFavorites();
+            }
+            
+            // 페이지 로드 시 찜 상태 초기화
+            document.addEventListener('DOMContentLoaded', function() {
+                initFavorites();
+            });
+            
             function showPhoneModal(event, phoneNumber, salonId) {
                 event.stopPropagation();
                 // 다른 모달 닫기
@@ -319,7 +420,8 @@ def index():
             
             function selectService(serviceName) {
                 const query = '{{ request.args.get("q", "") }}';
-                const url = '?q=' + encodeURIComponent(query) + '&sort=' + currentSortType + '&service=' + encodeURIComponent(serviceName);
+                const favorites = '{{ "true" if show_favorites else "" }}';
+                const url = '?q=' + encodeURIComponent(query) + '&sort=' + currentSortType + '&service=' + encodeURIComponent(serviceName) + (favorites ? '&favorites=true' : '');
                 window.location.href = url;
             }
 
@@ -432,7 +534,8 @@ def index():
         get_db_connection=get_db_connection,
         request=request,
         sort_by=sort_by,
-        service_type=service_type
+        service_type=service_type,
+        show_favorites=show_favorites
     )
 
 @app.route('/add', methods=['POST'])
